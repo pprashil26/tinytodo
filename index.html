@@ -7,38 +7,63 @@
 
   <style>
     :root{
-      --bg:#fff;
-      --grid:#e8e8e8;
-      --text:#111;
-      --muted:#666;
+      /* Paper palette */
+      --paper: #fcfbf7;                 /* warm off-white */
+      --paper-edge: #efece3;            /* border */
+      --paper-line: rgba(40, 60, 90, 0.08); /* ruled lines */
+      --paper-line-strong: rgba(40, 60, 90, 0.12);
 
-      /* Compact defaults (desktop) */
-      --row-h: 22px;
+      /* Text */
+      --text:#121212;
+      --muted:#6a6a6a;
+
+      /* Compact sizing */
+      --row-h: 22px;     /* compact desktop row height */
       --font: 13px;
       --pad-x: 4px;
 
       --check-col: 28px;
       --indent-step: 16px;
+      --max-indent: 6;
+
+      /* A6 width */
+      --a6w: 105mm;
     }
 
     *{ box-sizing:border-box; }
+    html, body{ height: 100%; }
+
     body{
       margin:0;
-      background:var(--bg);
       color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       font-size: var(--font);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+
+      /* Soft neutral page background (outside the paper) */
+      background:
+        radial-gradient(1200px 600px at 50% -200px, rgba(0,0,0,0.05), transparent 55%),
+        #f4f4f4;
     }
 
+    /* Header: full-width sticky, but content constrained to A6 */
     header{
       position: sticky;
       top: 0;
       z-index: 5;
-      background: var(--bg);
-      border-bottom: 1px solid var(--grid);
-      padding: 6px 10px;
+
+      background: rgba(244,244,244,0.9);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      padding: 6px 0; /* side padding lives inside header-inner */
+    }
+    .header-inner{
+      width: 100%;
+      max-width: var(--a6w); /* A6 width */
+      margin: 0 auto;
+      padding: 0 8px;
+
       display:flex;
       align-items:center;
       gap:8px;
@@ -55,42 +80,68 @@
       align-items:center;
     }
     .tab{
-      border:1px solid var(--grid);
-      background:#fff;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.7);
       padding: 4px 8px;
       border-radius: 999px;
       font: inherit;
       cursor:pointer;
       line-height: 1;
-      color: #111;
+      color: var(--text);
     }
     .tab.active{
-      border-color:#bbb;
-      background:#f6f6f6;
+      border-color: rgba(0,0,0,0.18);
+      background: rgba(255,255,255,0.95);
       font-weight: 600;
     }
 
+    /* A6 content column */
     .wrap{
-      max-width: 920px;
+      width: 100%;
+      max-width: var(--a6w);   /* A6 width */
       margin: 0 auto;
-      padding: 8px 10px 18px;
+      padding: 10px 8px 18px;
     }
 
-    .grid{
-      border: 1px solid var(--grid);
-      border-radius: 10px;
+    /* Paper card */
+    .paper{
+      border: 1px solid var(--paper-edge);
+      border-radius: 14px;
       overflow: hidden;
-      background:#fff;
+      background: var(--paper);
+      box-shadow:
+        0 10px 24px rgba(0,0,0,0.08),
+        0 2px 6px rgba(0,0,0,0.06);
     }
 
+    /* Paper-like ruled background inside the grid area */
+    .grid{
+      position: relative;
+      background:
+        /* subtle top highlight */
+        linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.0) 24px),
+        /* vertical divider hint (like a margin line) */
+        linear-gradient(to right, transparent 0, transparent calc(var(--check-col) - 1px),
+          rgba(40,60,90,0.10) calc(var(--check-col) - 1px),
+          transparent var(--check-col)),
+        /* ruled horizontal lines aligned with row height */
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent calc(var(--row-h) - 1px),
+          var(--paper-line) calc(var(--row-h) - 1px),
+          var(--paper-line) var(--row-h)
+        );
+    }
+
+    /* Row layout stays "Excel-like" but lighter */
     .row{
       display:grid;
       grid-template-columns: var(--check-col) 1fr;
       align-items:center;
-      border-bottom: 1px solid var(--grid);
       min-height: var(--row-h);
+      /* No heavy borders; paper lines handle separation */
     }
-    .row:last-child{ border-bottom:none; }
 
     .cell{
       padding: 0 var(--pad-x);
@@ -98,19 +149,24 @@
       display:flex;
       align-items:center;
       min-width: 0;
+      background: transparent;
     }
+
+    /* Checkbox column */
     .cell.check{
       justify-content:center;
-      border-right: 1px solid var(--grid);
+      /* keep a very faint column separation */
+      border-right: 1px solid rgba(40,60,90,0.08);
     }
 
     input[type="checkbox"]{
       width: 14px;
       height: 14px;
       margin:0;
-      accent-color:#111;
+      accent-color:#222;
     }
 
+    /* Single-line text input */
     .task{
       width:100%;
       height: calc(var(--row-h) - 2px);
@@ -120,7 +176,6 @@
       padding:0;
       background: transparent;
 
-      /* keep single-line + compact */
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -135,10 +190,12 @@
       color:#666;
     }
 
+    /* Indentation for subtasks */
     .cell.text{
       padding-left: calc(var(--pad-x) + (var(--indent) * var(--indent-step)));
     }
 
+    /* Controls */
     .bar{
       display:flex;
       gap:8px;
@@ -148,21 +205,20 @@
     }
 
     button.action{
-      border:1px solid var(--grid);
-      background:#fff;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.75);
       padding: 6px 9px;
-      border-radius:10px;
+      border-radius: 12px;
       font: inherit;
       cursor:pointer;
       line-height: 1.1;
     }
     button.action:active{ transform: translateY(1px); }
-    button.action.danger{
-      border-color:#e3b4b4;
-    }
     button.action.ghost{
-      color:#333;
-      background:#fafafa;
+      background: rgba(255,255,255,0.55);
+    }
+    button.action.danger{
+      border-color: rgba(190, 80, 80, 0.35);
     }
     button.action:disabled{
       opacity:0.45;
@@ -174,10 +230,9 @@
       color: var(--muted);
       margin-left:auto;
     }
-
     .file{ display:none; }
 
-    /* Mobile: a bit taller for touch */
+    /* Mobile: slightly taller rows + full width */
     @media (max-width: 520px){
       :root{
         --row-h: 28px;
@@ -188,22 +243,37 @@
       }
       input[type="checkbox"]{ width: 16px; height: 16px; }
       button.action{ padding: 9px 12px; }
-      header{ padding: 8px 10px; }
+      header{ padding: 8px 0; }
+
+      /* On very small screens, don't force A6 width */
+      .header-inner, .wrap{ max-width: 100%; }
+    }
+
+    /* Optional: print nicely */
+    @media print{
+      body{ background: #fff; }
+      @page { size: A6; margin: 6mm; }
+      header{ position: static; background:#fff; border-bottom:1px solid #ddd; }
+      .paper{ box-shadow:none; }
     }
   </style>
 </head>
 
 <body>
   <header>
-    <div class="title">Tiny Todo</div>
-    <div class="tabs">
-      <button class="tab" id="tabActive">Active</button>
-      <button class="tab" id="tabArchive">Archive (<span id="archCount">0</span>)</button>
+    <div class="header-inner">
+      <div class="title">Tiny Todo</div>
+      <div class="tabs">
+        <button class="tab" id="tabActive">Active</button>
+        <button class="tab" id="tabArchive">Archive (<span id="archCount">0</span>)</button>
+      </div>
     </div>
   </header>
 
   <div class="wrap">
-    <div class="grid" id="grid" aria-label="todo grid"></div>
+    <div class="paper">
+      <div class="grid" id="grid" aria-label="todo grid"></div>
+    </div>
 
     <div class="bar">
       <button class="action" id="add">+ Row</button>
@@ -229,11 +299,10 @@
     // -----------------------------
     const KEY_V2 = "tiny_todo_v2";
     const KEY_V1 = "tiny_todo_v1";
-    const MAX_INDENT = 6;
+    const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
     // item: { id, text, done, indent, archived, archivedAt }
     let items = load() || seed();
-
     let view = "active"; // "active" | "archive"
     let focusedId = null;
 
@@ -331,9 +400,8 @@
       tabActive.classList.toggle("active", view === "active");
       tabArchive.classList.toggle("active", view === "archive");
 
-      // Toggle button visibility (minimal)
       const inActive = view === "active";
-      btnAdd.disabled = !inActive; // no adding rows in archive
+      btnAdd.disabled = !inActive; // no adding rows in archive view
       btnArchiveDone.style.display = inActive ? "" : "none";
 
       btnRestoreFocused.style.display = inActive ? "none" : "";
@@ -356,7 +424,7 @@
       const vis = visibleItems();
       grid.innerHTML = "";
 
-      // ensure at least one row in active view
+      // Ensure at least one row in active view
       if (view === "active" && vis.length === 0){
         const newItem = { id: uid(), text: "", done: false, indent: 0, archived: false, archivedAt: null };
         items.push(newItem);
@@ -379,14 +447,11 @@
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.checked = !!it.done;
-
         cb.addEventListener("change", () => {
-          // In archive view: checkbox still means done/not done (kept simple)
           it.done = cb.checked;
           save();
           render(it.id);
         });
-
         cellCheck.appendChild(cb);
 
         const cellText = document.createElement("div");
@@ -419,6 +484,7 @@
 
       updateCounts();
 
+      // Restore focus if possible
       if (tryFocusId){
         const el = grid.querySelector(`.row[data-id="${tryFocusId}"] .task`);
         if (el){
@@ -426,7 +492,6 @@
           const v = el.value;
           el.setSelectionRange(v.length, v.length);
         } else {
-          // focus first row if requested focus is not visible
           const first = grid.querySelector(".row .task");
           if (first) first.focus();
         }
@@ -442,11 +507,6 @@
       if (el) el.focus();
     }
 
-    function indexInVisible(id){
-      const list = visibleItems();
-      return list.findIndex(x => x.id === id);
-    }
-
     // -----------------------------
     // Keyboard (Excel-like)
     // -----------------------------
@@ -458,25 +518,23 @@
       const idx = list.findIndex(x => x.id === id);
       const input = e.target;
 
-      // In archive view, prevent adding rows
       const canAddRows = (view === "active");
 
-      if (e.key === "Enter"){
-        // Ctrl/Cmd+Enter toggles done (fast)
-        if (e.ctrlKey || e.metaKey){
-          e.preventDefault();
-          it.done = !it.done;
-          save();
-          render(it.id);
-          return;
-        }
-
-        if (!canAddRows) return;
-
+      // Ctrl/Cmd+Enter toggles done (fast power shortcut)
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
         e.preventDefault();
-        const newItem = { id: uid(), text: "", done: false, indent: it.indent, archived: false, archivedAt: null };
+        it.done = !it.done;
+        save();
+        render(it.id);
+        return;
+      }
 
-        // Insert new row right after current item in the global items array
+      // Enter: new row below (inherits indent) - active view only
+      if (e.key === "Enter"){
+        if (!canAddRows) return;
+        e.preventDefault();
+
+        const newItem = { id: uid(), text: "", done: false, indent: it.indent, archived: false, archivedAt: null };
         const globalIndex = items.findIndex(x => x.id === it.id);
         items.splice(globalIndex + 1, 0, newItem);
 
@@ -485,10 +543,9 @@
         return;
       }
 
+      // Tab: indent/outdent (both views)
       if (e.key === "Tab"){
         e.preventDefault();
-
-        // Indent/outdent allowed in both views (kept simple)
         if (e.shiftKey){
           it.indent = clamp(it.indent - 1, 0, MAX_INDENT);
         } else {
@@ -500,8 +557,8 @@
       }
 
       // Backspace on empty:
-      // - Active view: delete row (as before)
-      // - Archive view: permanently delete row (this matches "recycle bin")
+      // - Active view: delete row
+      // - Archive view: permanently delete row
       if (e.key === "Backspace"){
         if (input.value === "" && list.length > 1){
           e.preventDefault();
@@ -536,7 +593,7 @@
     }
 
     // -----------------------------
-    // Actions: Archive / Restore / Delete
+    // Archive / Restore / Delete
     // -----------------------------
     function archiveDone(){
       const toArchive = items.filter(x => !x.archived && x.done);
@@ -548,7 +605,6 @@
       toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
       save();
 
-      // Keep focus sensible
       const remaining = items.filter(x => !x.archived);
       focusedId = remaining[0]?.id || null;
       render(focusedId);
@@ -556,15 +612,9 @@
     }
 
     function restoreFocused(){
-      if (!focusedId){
-        status("No focus");
-        return;
-      }
+      if (!focusedId){ status("No focus"); return; }
       const it = getItemById(focusedId);
-      if (!it || !it.archived){
-        status("Focus an archived task");
-        return;
-      }
+      if (!it || !it.archived){ status("Focus an archived task"); return; }
       it.archived = false;
       it.archivedAt = null;
       save();
@@ -573,15 +623,10 @@
     }
 
     function deleteFocused(){
-      if (!focusedId){
-        status("No focus");
-        return;
-      }
+      if (!focusedId){ status("No focus"); return; }
       const it = getItemById(focusedId);
-      if (!it || !it.archived){
-        status("Focus an archived task");
-        return;
-      }
+      if (!it || !it.archived){ status("Focus an archived task"); return; }
+
       const globalIndex = items.findIndex(x => x.id === it.id);
       items.splice(globalIndex, 1);
       save();
@@ -594,15 +639,14 @@
 
     function emptyArchive(){
       const count = items.filter(x => x.archived).length;
-      if (count === 0){
-        status("Archive empty");
-        return;
-      }
+      if (count === 0){ status("Archive empty"); return; }
       const ok = confirm(`Permanently delete ${count} archived item(s)?`);
       if (!ok) return;
+
       items = items.filter(x => !x.archived);
       save();
       status("Archive emptied");
+
       focusedId = visibleItems()[0]?.id || null;
       render(focusedId);
     }
@@ -628,7 +672,6 @@
       items = norm.length ? norm : seed();
       save();
 
-      // Return to active view after import
       focusedId = items.find(x => !x.archived)?.id || items[0]?.id || null;
       setView("active");
       status("Imported");
@@ -668,8 +711,7 @@
       }
     });
 
-    // Initial
-    updateCounts();
+    // Init
     focusedId = items.find(x => !x.archived)?.id || items[0]?.id || null;
     setView("active");
   </script>
