@@ -45,6 +45,7 @@
         #f4f4f4;
     }
 
+    /* Header: full-width sticky, content constrained to A6 */
     header{
       position: sticky;
       top: 0;
@@ -66,9 +67,48 @@
     .title{
       font-weight: 700;
       font-size: 13px;
-      margin-right:auto;
       letter-spacing: 0.2px;
+      white-space: nowrap;
     }
+
+    .header-right{
+      margin-left:auto;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* Page selector */
+    .page-select{
+      max-width: 140px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.75);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font: inherit;
+      color: var(--text);
+      outline: none;
+      height: 26px;
+      line-height: 1;
+    }
+
+    .pill-btn{
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.75);
+      border-radius: 999px;
+      padding: 4px 10px;
+      height: 26px;
+      font: inherit;
+      cursor:pointer;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .pill-btn:active{ transform: translateY(1px); }
+    .pill-btn:disabled{ opacity:0.45; cursor: default; }
+
     .tabs{ display:flex; gap:6px; align-items:center; }
     .tab{
       border:1px solid rgba(0,0,0,0.10);
@@ -79,6 +119,7 @@
       cursor:pointer;
       line-height: 1;
       color: var(--text);
+      height: 26px;
     }
     .tab.active{
       border-color: rgba(0,0,0,0.18);
@@ -86,6 +127,7 @@
       font-weight: 600;
     }
 
+    /* A6 content column */
     .wrap{
       width: 100%;
       max-width: var(--a6w);
@@ -93,6 +135,7 @@
       padding: 10px 8px 18px;
     }
 
+    /* Paper card */
     .paper{
       border: 1px solid var(--paper-edge);
       border-radius: 14px;
@@ -103,6 +146,7 @@
         0 2px 6px rgba(0,0,0,0.06);
     }
 
+    /* Paper-like ruled background inside the grid area */
     .grid{
       position: relative;
       background:
@@ -185,6 +229,7 @@
       font: inherit;
       cursor:pointer;
       line-height: 1.1;
+      white-space: nowrap;
     }
     button.action:active{ transform: translateY(1px); }
     button.action.ghost{ background: rgba(255,255,255,0.55); }
@@ -199,6 +244,7 @@
 
     .file{ display:none; }
 
+    /* Mobile */
     @media (max-width: 520px){
       :root{
         --row-h: 28px;
@@ -207,6 +253,7 @@
         --check-col: 34px;
         --indent-step: 18px;
       }
+
       /* Prevent iOS Safari zoom-on-focus */
       .task{ font-size: 16px; }
 
@@ -214,6 +261,7 @@
       button.action{ padding: 9px 12px; }
       header{ padding: 8px 0; }
       .header-inner, .wrap{ max-width: 100%; }
+      .page-select{ max-width: 120px; }
     }
 
     @media print{
@@ -229,9 +277,19 @@
   <header>
     <div class="header-inner">
       <div class="title">Tiny Todo</div>
-      <div class="tabs">
-        <button class="tab" id="tabActive">Active</button>
-        <button class="tab" id="tabArchive">Archive (<span id="archCount">0</span>)</button>
+
+      <div class="header-right">
+        <!-- Pages -->
+        <select class="page-select" id="pageSelect" title="Pages"></select>
+        <button class="pill-btn" id="newPage" title="New page">+ Page</button>
+        <button class="pill-btn" id="renamePage" title="Rename page">Rename</button>
+        <button class="pill-btn" id="deletePage" title="Delete page">Del</button>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab" id="tabActive">Active</button>
+          <button class="tab" id="tabArchive">Archive (<span id="archCount">0</span>)</button>
+        </div>
       </div>
     </div>
   </header>
@@ -252,16 +310,19 @@
       <button class="action danger" id="deleteFocused">Delete focused</button>
       <button class="action danger" id="emptyArchive">Empty archive</button>
 
-      <!-- JSON -->
+      <!-- Current page: JSON/TXT -->
       <button class="action" id="exportJson">Export JSON</button>
       <button class="action" id="importJson">Import JSON</button>
-
-      <!-- TXT -->
       <button class="action" id="exportTxt">Export TXT</button>
       <button class="action" id="importTxt">Import TXT</button>
 
+      <!-- All pages backup/restore -->
+      <button class="action" id="backupAll">Backup ALL</button>
+      <button class="action danger" id="restoreAll">Restore ALL</button>
+
       <input class="file" id="fileJson" type="file" accept="application/json" />
       <input class="file" id="fileTxt" type="file" accept="text/plain,.txt" />
+      <input class="file" id="fileAll" type="file" accept="application/json" />
 
       <div class="small" id="status"></div>
     </div>
@@ -269,22 +330,38 @@
 
   <script>
     // -----------------------------
-    // Model + Storage
+    // Storage keys
     // -----------------------------
-    const KEY_V2 = "tiny_todo_v2";
-    const KEY_V1 = "tiny_todo_v1";
+    const KEY_V3 = "tiny_todo_v3_pages"; // pages notebook
+    const KEY_V2 = "tiny_todo_v2";       // old single-list
+    const KEY_V1 = "tiny_todo_v1";       // older
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
-    // item: { id, text, done, indent, archived, archivedAt }
-    let items = load() || seed();
-    let view = "active"; // "active" | "archive"
+    // Notebook model:
+    // {
+    //   version: 1,
+    //   activePageId: string,
+    //   pages: { [pageId]: { id, name, items: Item[] } }
+    // }
+    // Item: { id, text, done, indent, archived, archivedAt }
+    let notebook = loadNotebook() || seedNotebook();
+    let view = "active";
     let focusedId = null;
 
+    // -----------------------------
+    // DOM
+    // -----------------------------
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
+
     const tabActive = document.getElementById("tabActive");
     const tabArchive = document.getElementById("tabArchive");
     const archCountEl = document.getElementById("archCount");
+
+    const pageSelect = document.getElementById("pageSelect");
+    const btnNewPage = document.getElementById("newPage");
+    const btnRenamePage = document.getElementById("renamePage");
+    const btnDeletePage = document.getElementById("deletePage");
 
     const btnAdd = document.getElementById("add");
     const btnArchiveDone = document.getElementById("archiveDone");
@@ -297,24 +374,41 @@
     const btnExportTxt  = document.getElementById("exportTxt");
     const btnImportTxt  = document.getElementById("importTxt");
 
+    const btnBackupAll  = document.getElementById("backupAll");
+    const btnRestoreAll = document.getElementById("restoreAll");
+
     const fileJson = document.getElementById("fileJson");
     const fileTxt  = document.getElementById("fileTxt");
+    const fileAll  = document.getElementById("fileAll");
 
-    function seed(){
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    function uid(){
+      return Math.random().toString(16).slice(2) + Date.now().toString(16);
+    }
+    function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+
+    function seedItems(){
       return [
         { id: uid(), text: "Task", done: false, indent: 0, archived: false, archivedAt: null },
         { id: uid(), text: "Subtask (Tab to indent)", done: false, indent: 1, archived: false, archivedAt: null },
       ];
     }
 
-    function uid(){
-      return Math.random().toString(16).slice(2) + Date.now().toString(16);
+    function seedNotebook(){
+      const pid = uid();
+      return {
+        version: 1,
+        activePageId: pid,
+        pages: {
+          [pid]: { id: pid, name: "Personal", items: seedItems() }
+        }
+      };
     }
 
-    function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
-
-    function normalize(raw){
-      if (!Array.isArray(raw)) return null;
+    function normalizeItems(raw){
+      if (!Array.isArray(raw)) return [];
       return raw.map(x => ({
         id: x.id || uid(),
         text: String(x.text || ""),
@@ -325,16 +419,65 @@
       }));
     }
 
-    function load(){
+    function ensureNotebookShape(nb){
+      if (!nb || typeof nb !== "object") return null;
+      if (!nb.pages || typeof nb.pages !== "object") return null;
+
+      // Normalize pages
+      const pageIds = Object.keys(nb.pages);
+      if (pageIds.length === 0) return null;
+
+      for (const pid of pageIds){
+        const p = nb.pages[pid];
+        if (!p || typeof p !== "object") return null;
+
+        p.id = pid;
+        p.name = String(p.name || "Untitled");
+        p.items = normalizeItems(p.items);
+
+        // Ensure at least one active row per page (optional but keeps UI stable)
+        if (p.items.filter(x => !x.archived).length === 0){
+          p.items.unshift({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
+        }
+      }
+
+      // Ensure activePageId is valid
+      if (!nb.activePageId || !nb.pages[nb.activePageId]){
+        nb.activePageId = pageIds[0];
+      }
+
+      nb.version = 1;
+      return nb;
+    }
+
+    // -----------------------------
+    // Load / Save with Migration
+    // -----------------------------
+    function loadNotebook(){
       try{
-        const raw2 = localStorage.getItem(KEY_V2);
-        if (raw2){
-          const parsed = JSON.parse(raw2);
-          const norm = normalize(parsed);
-          if (norm) return norm;
+        const raw3 = localStorage.getItem(KEY_V3);
+        if (raw3){
+          const parsed = JSON.parse(raw3);
+          return ensureNotebookShape(parsed);
         }
 
-        // Migrate v1 -> v2
+        // Migrate v2 -> v3 (single list becomes a page)
+        const raw2 = localStorage.getItem(KEY_V2);
+        if (raw2){
+          const items = normalizeItems(JSON.parse(raw2));
+          const pid = uid();
+          const nb = ensureNotebookShape({
+            version: 1,
+            activePageId: pid,
+            pages: {
+              [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems() }
+            }
+          });
+          localStorage.setItem(KEY_V3, JSON.stringify(nb));
+          return nb;
+        }
+
+        // Migrate v1 -> v3 (older)
         const raw1 = localStorage.getItem(KEY_V1);
         if (raw1){
           const parsed1 = JSON.parse(raw1);
@@ -347,20 +490,30 @@
               archived: false,
               archivedAt: null
             }));
-            localStorage.setItem(KEY_V2, JSON.stringify(migrated));
-            return migrated;
+            const pid = uid();
+            const nb = ensureNotebookShape({
+              version: 1,
+              activePageId: pid,
+              pages: {
+                [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems() }
+              }
+            });
+            localStorage.setItem(KEY_V3, JSON.stringify(nb));
+            return nb;
           }
         }
+
         return null;
       }catch(e){
         return null;
       }
     }
 
-    function save(){
-      localStorage.setItem(KEY_V2, JSON.stringify(items));
+    function saveNotebook(){
+      localStorage.setItem(KEY_V3, JSON.stringify(notebook));
       status("Saved");
-      updateCounts();
+      updateArchiveCount();
+      rebuildPageSelect();
     }
 
     let statusTimer;
@@ -370,8 +523,85 @@
       statusTimer = setTimeout(() => statusEl.textContent = "", 900);
     }
 
+    function currentPage(){
+      return notebook.pages[notebook.activePageId];
+    }
+
     // -----------------------------
-    // View + Rendering
+    // Pages UI
+    // -----------------------------
+    function rebuildPageSelect(){
+      const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
+      const currentId = notebook.activePageId;
+
+      pageSelect.innerHTML = "";
+      for (const p of pages){
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.name;
+        pageSelect.appendChild(opt);
+      }
+      pageSelect.value = currentId;
+
+      btnDeletePage.disabled = Object.keys(notebook.pages).length <= 1;
+    }
+
+    function switchPage(pageId){
+      if (!notebook.pages[pageId]) return;
+      notebook.activePageId = pageId;
+      focusedId = null;
+      saveNotebook();
+      render(null);
+    }
+
+    function newPage(){
+      const name = prompt("Page name:", "New Page");
+      if (!name) return;
+      const id = uid();
+      notebook.pages[id] = {
+        id,
+        name: name.trim(),
+        items: [{ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null }]
+      };
+      notebook.activePageId = id;
+      focusedId = notebook.pages[id].items[0].id;
+      saveNotebook();
+      setView("active");
+      render(focusedId);
+      status("Page created");
+    }
+
+    function renamePage(){
+      const p = currentPage();
+      const name = prompt("Rename page:", p.name);
+      if (!name) return;
+      p.name = name.trim();
+      saveNotebook();
+      status("Renamed");
+    }
+
+    function deletePage(){
+      const ids = Object.keys(notebook.pages);
+      if (ids.length <= 1) return;
+
+      const p = currentPage();
+      const ok = confirm(`Delete page "${p.name}"?\nThis permanently removes all tasks in it.`);
+      if (!ok) return;
+
+      delete notebook.pages[p.id];
+
+      const remaining = Object.keys(notebook.pages);
+      notebook.activePageId = remaining[0];
+      focusedId = null;
+
+      saveNotebook();
+      setView("active");
+      render(null);
+      status("Page deleted");
+    }
+
+    // -----------------------------
+    // View + Rendering (per page)
     // -----------------------------
     function setView(v){
       view = v;
@@ -390,21 +620,24 @@
     }
 
     function visibleItems(){
+      const items = currentPage().items;
       return items.filter(it => view === "active" ? !it.archived : it.archived);
     }
 
-    function updateCounts(){
+    function updateArchiveCount(){
+      const items = currentPage().items;
       archCountEl.textContent = String(items.filter(x => x.archived).length);
     }
 
     function render(tryFocusId){
+      const p = currentPage();
       const vis = visibleItems();
       grid.innerHTML = "";
 
       if (view === "active" && vis.length === 0){
-        const newItem = { id: uid(), text: "", done: false, indent: 0, archived: false, archivedAt: null };
-        items.push(newItem);
-        save();
+        const newItem = { id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null };
+        p.items.push(newItem);
+        saveNotebook();
       }
 
       const list = visibleItems();
@@ -423,7 +656,7 @@
         cb.checked = !!it.done;
         cb.addEventListener("change", () => {
           it.done = cb.checked;
-          save();
+          saveNotebook();
           render(it.id);
         });
         cellCheck.appendChild(cb);
@@ -440,7 +673,7 @@
         input.autocomplete = "off";
 
         input.addEventListener("focus", () => focusedId = it.id);
-        input.addEventListener("input", () => { it.text = input.value; save(); });
+        input.addEventListener("input", () => { it.text = input.value; saveNotebook(); });
         input.addEventListener("keydown", (e) => onKey(e, it.id));
 
         cellText.appendChild(input);
@@ -449,7 +682,7 @@
         grid.appendChild(row);
       });
 
-      updateCounts();
+      updateArchiveCount();
 
       if (tryFocusId){
         const el = grid.querySelector(`.row[data-id="${tryFocusId}"] .task`);
@@ -464,7 +697,9 @@
       }
     }
 
-    function getItemById(id){ return items.find(x => x.id === id) || null; }
+    function getItemById(id){
+      return currentPage().items.find(x => x.id === id) || null;
+    }
     function focusIndex(i){
       const el = grid.querySelector(`.row[data-index="${i}"] .task`);
       if (el) el.focus();
@@ -474,6 +709,7 @@
     // Keyboard
     // -----------------------------
     function onKey(e, id){
+      const p = currentPage();
       const it = getItemById(id);
       if (!it) return;
 
@@ -485,7 +721,7 @@
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
         e.preventDefault();
         it.done = !it.done;
-        save();
+        saveNotebook();
         render(it.id);
         return;
       }
@@ -494,11 +730,11 @@
         if (!canAddRows) return;
         e.preventDefault();
 
-        const newItem = { id: uid(), text: "", done: false, indent: it.indent, archived: false, archivedAt: null };
-        const globalIndex = items.findIndex(x => x.id === it.id);
-        items.splice(globalIndex + 1, 0, newItem);
+        const newItem = { id: uid(), text: "", done:false, indent: it.indent, archived:false, archivedAt:null };
+        const globalIndex = p.items.findIndex(x => x.id === it.id);
+        p.items.splice(globalIndex + 1, 0, newItem);
 
-        save();
+        saveNotebook();
         render(newItem.id);
         return;
       }
@@ -508,7 +744,7 @@
         it.indent = e.shiftKey
           ? clamp(it.indent - 1, 0, MAX_INDENT)
           : clamp(it.indent + 1, 0, MAX_INDENT);
-        save();
+        saveNotebook();
         render(it.id);
         return;
       }
@@ -516,9 +752,9 @@
       if (e.key === "Backspace"){
         if (input.value === "" && list.length > 1){
           e.preventDefault();
-          const globalIndex = items.findIndex(x => x.id === it.id);
-          items.splice(globalIndex, 1);
-          save();
+          const globalIndex = p.items.findIndex(x => x.id === it.id);
+          p.items.splice(globalIndex, 1);
+          saveNotebook();
 
           const prevIdx = Math.max(0, idx - 1);
           const after = visibleItems()[prevIdx];
@@ -534,7 +770,6 @@
           focusIndex(Math.max(0, idx - 1));
         }
       }
-
       if (e.key === "ArrowDown"){
         const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
         if (atEnd || input.value.length === 0){
@@ -545,16 +780,17 @@
     }
 
     // -----------------------------
-    // Archive / Restore / Delete
+    // Archive / Restore / Delete (per page)
     // -----------------------------
     function archiveDone(){
-      const toArchive = items.filter(x => !x.archived && x.done);
+      const p = currentPage();
+      const toArchive = p.items.filter(x => !x.archived && x.done);
       if (toArchive.length === 0){ status("No done tasks"); return; }
       const now = Date.now();
       toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
-      save();
+      saveNotebook();
 
-      const remaining = items.filter(x => !x.archived);
+      const remaining = p.items.filter(x => !x.archived);
       focusedId = remaining[0]?.id || null;
       render(focusedId);
       status(`Archived ${toArchive.length}`);
@@ -566,94 +802,94 @@
       if (!it || !it.archived){ status("Focus an archived task"); return; }
       it.archived = false;
       it.archivedAt = null;
-      save();
+      saveNotebook();
       status("Restored");
       render(it.id);
     }
 
     function deleteFocused(){
       if (!focusedId){ status("No focus"); return; }
+      const p = currentPage();
       const it = getItemById(focusedId);
       if (!it || !it.archived){ status("Focus an archived task"); return; }
-      items = items.filter(x => x.id !== it.id);
-      save();
+      p.items = p.items.filter(x => x.id !== it.id);
+      saveNotebook();
       status("Deleted");
       focusedId = visibleItems()[0]?.id || null;
       render(focusedId);
     }
 
     function emptyArchive(){
-      const count = items.filter(x => x.archived).length;
+      const p = currentPage();
+      const count = p.items.filter(x => x.archived).length;
       if (count === 0){ status("Archive empty"); return; }
       if (!confirm(`Permanently delete ${count} archived item(s)?`)) return;
-
-      items = items.filter(x => !x.archived);
-      save();
+      p.items = p.items.filter(x => !x.archived);
+      saveNotebook();
       status("Archive emptied");
       focusedId = visibleItems()[0]?.id || null;
       render(focusedId);
     }
 
     // -----------------------------
-    // JSON Export / Import
+    // Export / Import (files)
     // -----------------------------
-    function exportJson(){
-      const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
-      downloadBlob(blob, `tiny-todo-${new Date().toISOString().slice(0,10)}.json`);
+    function downloadBlob(blob, filename){
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    function safeName(name){
+      return String(name || "page").trim().replace(/[^\w\-]+/g, "_").slice(0, 40) || "page";
     }
 
+    // Current page JSON
+    function exportJson(){
+      const p = currentPage();
+      const blob = new Blob([JSON.stringify(p.items, null, 2)], { type: "application/json" });
+      downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.json`);
+    }
     async function importJsonFile(f){
+      const p = currentPage();
       const text = await f.text();
       const data = JSON.parse(text);
-      const norm = normalize(data);
-      if (!norm) throw new Error("Invalid JSON file");
-      items = norm.length ? norm : seed();
-      save();
-      focusedId = items.find(x => !x.archived)?.id || items[0]?.id || null;
+      const items = normalizeItems(data);
+      p.items = items.length ? items : [{ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null }];
+      saveNotebook();
+      focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
       setView("active");
       status("Imported JSON");
     }
 
-    // -----------------------------
-    // TXT Export / Import (Plain Text)
-    // -----------------------------
+    // Current page TXT
     const ARCHIVE_MARKER = "--- ARCHIVE ---";
-
-    function toPlainText(){
-      const lines = [];
-
-      const active = items.filter(x => !x.archived);
-      const archived = items.filter(x => x.archived);
-
-      for (const it of active){
-        lines.push(formatTxtLine(it));
-      }
-
-      if (archived.length){
-        lines.push(ARCHIVE_MARKER);
-        for (const it of archived){
-          lines.push(formatTxtLine(it));
-        }
-      }
-
-      // trailing newline is nice for editors
-      return lines.join("\n") + "\n";
-    }
 
     function formatTxtLine(it){
       const tabs = "\t".repeat(clamp(it.indent, 0, MAX_INDENT));
       const mark = it.done ? "[x] " : "[ ] ";
       return tabs + mark + (it.text || "");
     }
+    function toPlainText(){
+      const p = currentPage();
+      const lines = [];
+      const active = p.items.filter(x => !x.archived);
+      const archived = p.items.filter(x => x.archived);
 
+      for (const it of active) lines.push(formatTxtLine(it));
+      if (archived.length){
+        lines.push(ARCHIVE_MARKER);
+        for (const it of archived) lines.push(formatTxtLine(it));
+      }
+      return lines.join("\n") + "\n";
+    }
     function fromPlainText(text){
       const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-
       let inArchive = false;
       const out = [];
 
       for (let line of rawLines){
-        // ignore completely blank lines
         if (!line || line.trim() === "") continue;
 
         if (line.trim() === ARCHIVE_MARKER){
@@ -661,23 +897,11 @@
           continue;
         }
 
-        // Count leading tabs OR groups of 2 spaces (optional)
         let indent = 0;
-
-        // tabs first
-        while (line.startsWith("\t")){
-          indent++;
-          line = line.slice(1);
-        }
-        // optional: treat leading 2-spaces as one indent (helps if user edits in some apps)
-        while (line.startsWith("  ")){
-          indent++;
-          line = line.slice(2);
-        }
-
+        while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+        while (line.startsWith("  ")){ indent++; line = line.slice(2); } // optional: 2 spaces = indent
         indent = clamp(indent, 0, MAX_INDENT);
 
-        // Parse checkbox
         const trimmed = line.trimStart();
         let done = false;
         let textPart = trimmed;
@@ -687,7 +911,6 @@
           done = (m[1].toLowerCase() === "x");
           textPart = m[2] ?? "";
         } else {
-          // If no [ ] marker, treat whole line as text (not done)
           done = false;
           textPart = trimmed;
         }
@@ -702,35 +925,61 @@
         });
       }
 
-      // Ensure at least one active row
       if (out.filter(x => !x.archived).length === 0){
-        out.unshift({ id: uid(), text: "", done: false, indent: 0, archived: false, archivedAt: null });
+        out.unshift({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
       }
-
       return out;
     }
-
     function exportTxt(){
-      const txt = toPlainText();
-      const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
-      downloadBlob(blob, `tiny-todo-${new Date().toISOString().slice(0,10)}.txt`);
+      const p = currentPage();
+      const blob = new Blob([toPlainText()], { type: "text/plain;charset=utf-8" });
+      downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
     }
-
     async function importTxtFile(f){
+      const p = currentPage();
       const text = await f.text();
-      items = fromPlainText(text);
-      save();
-      focusedId = items.find(x => !x.archived)?.id || items[0]?.id || null;
+      p.items = fromPlainText(text);
+      saveNotebook();
+      focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
       setView("active");
       status("Imported TXT");
     }
 
-    function downloadBlob(blob, filename){
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(a.href);
+    // -----------------------------
+    // Backup ALL Pages (one file) + Restore ALL
+    // -----------------------------
+    function backupAll(){
+      // Export the entire notebook object
+      const payload = {
+        format: "tiny-todo-backup",
+        exportedAt: new Date().toISOString(),
+        notebook
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      downloadBlob(blob, `tiny-todo-backup-${new Date().toISOString().slice(0,10)}.json`);
+      status("Backup exported");
+    }
+
+    async function restoreAllFromFile(f){
+      const text = await f.text();
+      const data = JSON.parse(text);
+
+      // Accept either wrapped payload or raw notebook (for flexibility)
+      const nbCandidate = (data && data.notebook) ? data.notebook : data;
+      const nb = ensureNotebookShape(nbCandidate);
+      if (!nb) throw new Error("Invalid backup file");
+
+      const ok = confirm("Restore ALL will replace your current pages and tasks. Continue?");
+      if (!ok) return;
+
+      notebook = nb;
+      view = "active";
+      focusedId = null;
+      saveNotebook();
+      rebuildPageSelect();
+      setView("active");
+      render(null);
+      status("Restored ALL");
     }
 
     // -----------------------------
@@ -739,11 +988,17 @@
     tabActive.addEventListener("click", () => setView("active"));
     tabArchive.addEventListener("click", () => setView("archive"));
 
+    pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
+    btnNewPage.addEventListener("click", newPage);
+    btnRenamePage.addEventListener("click", renamePage);
+    btnDeletePage.addEventListener("click", deletePage);
+
     btnAdd.addEventListener("click", () => {
       if (view !== "active") return;
-      const newItem = { id: uid(), text: "", done: false, indent: 0, archived: false, archivedAt: null };
-      items.push(newItem);
-      save();
+      const p = currentPage();
+      const newItem = { id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null };
+      p.items.push(newItem);
+      saveNotebook();
       focusedId = newItem.id;
       render(newItem.id);
     });
@@ -773,8 +1028,19 @@
       finally{ fileTxt.value = ""; }
     });
 
+    btnBackupAll.addEventListener("click", backupAll);
+    btnRestoreAll.addEventListener("click", () => fileAll.click());
+    fileAll.addEventListener("change", async () => {
+      const f = fileAll.files[0];
+      if (!f) return;
+      try{ await restoreAllFromFile(f); }
+      catch(e){ alert("Restore ALL failed: " + e.message); }
+      finally{ fileAll.value = ""; }
+    });
+
     // Init
-    focusedId = items.find(x => !x.archived)?.id || items[0]?.id || null;
+    rebuildPageSelect();
+    focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
     setView("active");
   </script>
 </body>
