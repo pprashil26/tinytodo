@@ -234,6 +234,12 @@
 
     /* Mobile: slightly taller rows + full width */
     @media (max-width: 520px){
+      
+ /* Prevent iOS Safari zoom-on-focus */
+  input.task{
+    font-size: 16px;
+  }
+
       :root{
         --row-h: 28px;
         --font: 15px;
