@@ -45,7 +45,6 @@
         #f4f4f4;
     }
 
-    /* Header: full-width sticky, content constrained to A6 */
     header{
       position: sticky;
       top: 0;
@@ -81,7 +80,6 @@
       justify-content: flex-end;
     }
 
-    /* Page selector */
     .page-select{
       max-width: 140px;
       border:1px solid rgba(0,0,0,0.10);
@@ -127,7 +125,6 @@
       font-weight: 600;
     }
 
-    /* A6 content column */
     .wrap{
       width: 100%;
       max-width: var(--a6w);
@@ -135,7 +132,6 @@
       padding: 10px 8px 18px;
     }
 
-    /* Paper card */
     .paper{
       border: 1px solid var(--paper-edge);
       border-radius: 14px;
@@ -146,7 +142,6 @@
         0 2px 6px rgba(0,0,0,0.06);
     }
 
-    /* Paper-like ruled background inside the grid area */
     .grid{
       position: relative;
       background:
@@ -244,7 +239,6 @@
 
     .file{ display:none; }
 
-    /* Mobile */
     @media (max-width: 520px){
       :root{
         --row-h: 28px;
@@ -253,10 +247,7 @@
         --check-col: 34px;
         --indent-step: 18px;
       }
-
-      /* Prevent iOS Safari zoom-on-focus */
-      .task{ font-size: 16px; }
-
+      .task{ font-size: 16px; } /* prevent iOS zoom */
       input[type="checkbox"]{ width: 16px; height: 16px; }
       button.action{ padding: 9px 12px; }
       header{ padding: 8px 0; }
@@ -279,13 +270,11 @@
       <div class="title">Tiny Todo</div>
 
       <div class="header-right">
-        <!-- Pages -->
         <select class="page-select" id="pageSelect" title="Pages"></select>
         <button class="pill-btn" id="newPage" title="New page">+ Page</button>
         <button class="pill-btn" id="renamePage" title="Rename page">Rename</button>
         <button class="pill-btn" id="deletePage" title="Delete page">Del</button>
 
-        <!-- Tabs -->
         <div class="tabs">
           <button class="tab" id="tabActive">Active</button>
           <button class="tab" id="tabArchive">Archive (<span id="archCount">0</span>)</button>
@@ -302,23 +291,22 @@
     <div class="bar">
       <button class="action" id="add">+ Row</button>
 
-      <!-- Active-only -->
       <button class="action ghost" id="archiveDone">Archive done</button>
 
-      <!-- Archive-only -->
       <button class="action ghost" id="restoreFocused">Restore focused</button>
       <button class="action danger" id="deleteFocused">Delete focused</button>
       <button class="action danger" id="emptyArchive">Empty archive</button>
 
-      <!-- Current page: JSON/TXT -->
       <button class="action" id="exportJson">Export JSON</button>
       <button class="action" id="importJson">Import JSON</button>
       <button class="action" id="exportTxt">Export TXT</button>
       <button class="action" id="importTxt">Import TXT</button>
 
-      <!-- All pages backup/restore -->
       <button class="action" id="backupAll">Backup ALL</button>
       <button class="action danger" id="restoreAll">Restore ALL</button>
+
+      <!-- NEW: Sort by title -->
+      <button class="action" id="sortTitle">Sort A→Z</button>
 
       <input class="file" id="fileJson" type="file" accept="application/json" />
       <input class="file" id="fileTxt" type="file" accept="text/plain,.txt" />
@@ -332,25 +320,16 @@
     // -----------------------------
     // Storage keys
     // -----------------------------
-    const KEY_V3 = "tiny_todo_v3_pages"; // pages notebook
-    const KEY_V2 = "tiny_todo_v2";       // old single-list
-    const KEY_V1 = "tiny_todo_v1";       // older
+    const KEY_V3 = "tiny_todo_v3_pages";
+    const KEY_V2 = "tiny_todo_v2";
+    const KEY_V1 = "tiny_todo_v1";
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
-    // Notebook model:
-    // {
-    //   version: 1,
-    //   activePageId: string,
-    //   pages: { [pageId]: { id, name, items: Item[] } }
-    // }
-    // Item: { id, text, done, indent, archived, archivedAt }
     let notebook = loadNotebook() || seedNotebook();
     let view = "active";
     let focusedId = null;
 
-    // -----------------------------
     // DOM
-    // -----------------------------
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
 
@@ -376,6 +355,8 @@
 
     const btnBackupAll  = document.getElementById("backupAll");
     const btnRestoreAll = document.getElementById("restoreAll");
+
+    const btnSortTitle  = document.getElementById("sortTitle");
 
     const fileJson = document.getElementById("fileJson");
     const fileTxt  = document.getElementById("fileTxt");
@@ -423,7 +404,6 @@
       if (!nb || typeof nb !== "object") return null;
       if (!nb.pages || typeof nb.pages !== "object") return null;
 
-      // Normalize pages
       const pageIds = Object.keys(nb.pages);
       if (pageIds.length === 0) return null;
 
@@ -435,13 +415,11 @@
         p.name = String(p.name || "Untitled");
         p.items = normalizeItems(p.items);
 
-        // Ensure at least one active row per page (optional but keeps UI stable)
         if (p.items.filter(x => !x.archived).length === 0){
           p.items.unshift({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
         }
       }
 
-      // Ensure activePageId is valid
       if (!nb.activePageId || !nb.pages[nb.activePageId]){
         nb.activePageId = pageIds[0];
       }
@@ -461,7 +439,6 @@
           return ensureNotebookShape(parsed);
         }
 
-        // Migrate v2 -> v3 (single list becomes a page)
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
           const items = normalizeItems(JSON.parse(raw2));
@@ -477,7 +454,6 @@
           return nb;
         }
 
-        // Migrate v1 -> v3 (older)
         const raw1 = localStorage.getItem(KEY_V1);
         if (raw1){
           const parsed1 = JSON.parse(raw1);
@@ -832,6 +808,67 @@
     }
 
     // -----------------------------
+    // NEW: Sort by Title (A→Z), hierarchy-safe
+    // -----------------------------
+    function normTitle(s){
+      return String(s || "").trim().toLocaleLowerCase();
+    }
+
+    // Split array into blocks: each indent-0 item + its following children (indent >0)
+    function blockify(list){
+      const blocks = [];
+      let current = null;
+
+      for (const it of list){
+        const isTop = (Number(it.indent) === 0);
+
+        if (isTop || !current){
+          current = { key: normTitle(it.text), items: [it] };
+          blocks.push(current);
+        } else {
+          current.items.push(it);
+        }
+      }
+
+      // Ensure key exists even if empty
+      for (const b of blocks){
+        if (!b.key) b.key = "";
+      }
+
+      return blocks;
+    }
+
+    function sortCurrentViewByTitle(){
+      const p = currentPage();
+
+      // Separate active vs archived (page-local)
+      const active = p.items.filter(x => !x.archived);
+      const archived = p.items.filter(x => x.archived);
+
+      const target = (view === "active") ? active : archived;
+
+      // Build blocks and sort by the parent (block) title
+      const blocks = blockify(target);
+
+      blocks.sort((a,b) => a.key.localeCompare(b.key));
+
+      const sortedTarget = blocks.flatMap(b => b.items);
+
+      // Reassemble page items (keep other section as-is)
+      p.items = (view === "active")
+        ? [...sortedTarget, ...archived]
+        : [...active, ...sortedTarget];
+
+      saveNotebook();
+      focusedId = (view === "active")
+        ? (sortedTarget.find(x => !x.archived)?.id || sortedTarget[0]?.id || null)
+        : (sortedTarget[0]?.id || null);
+
+      render(focusedId);
+      status("Sorted A→Z");
+    }
+
+    // -----------------------------
     // Export / Import (files)
     // -----------------------------
     function downloadBlob(blob, filename){
@@ -845,7 +882,6 @@
       return String(name || "page").trim().replace(/[^\w\-]+/g, "_").slice(0, 40) || "page";
     }
 
-    // Current page JSON
     function exportJson(){
       const p = currentPage();
       const blob = new Blob([JSON.stringify(p.items, null, 2)], { type: "application/json" });
@@ -863,7 +899,6 @@
       status("Imported JSON");
     }
 
-    // Current page TXT
     const ARCHIVE_MARKER = "--- ARCHIVE ---";
 
     function formatTxtLine(it){
@@ -871,6 +906,7 @@
       const mark = it.done ? "[x] " : "[ ] ";
       return tabs + mark + (it.text || "");
     }
+
     function toPlainText(){
       const p = currentPage();
       const lines = [];
@@ -884,6 +920,7 @@
       }
       return lines.join("\n") + "\n";
     }
+
     function fromPlainText(text){
       const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
       let inArchive = false;
@@ -899,7 +936,7 @@
 
         let indent = 0;
         while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-        while (line.startsWith("  ")){ indent++; line = line.slice(2); } // optional: 2 spaces = indent
+        while (line.startsWith("  ")){ indent++; line = line.slice(2); }
         indent = clamp(indent, 0, MAX_INDENT);
 
         const trimmed = line.trimStart();
@@ -930,11 +967,13 @@
       }
       return out;
     }
+
     function exportTxt(){
       const p = currentPage();
       const blob = new Blob([toPlainText()], { type: "text/plain;charset=utf-8" });
       downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
     }
+
     async function importTxtFile(f){
       const p = currentPage();
       const text = await f.text();
@@ -945,11 +984,7 @@
       status("Imported TXT");
     }
 
-    // -----------------------------
-    // Backup ALL Pages (one file) + Restore ALL
-    // -----------------------------
     function backupAll(){
-      // Export the entire notebook object
       const payload = {
         format: "tiny-todo-backup",
         exportedAt: new Date().toISOString(),
@@ -963,8 +998,6 @@
     async function restoreAllFromFile(f){
       const text = await f.text();
       const data = JSON.parse(text);
-
-      // Accept either wrapped payload or raw notebook (for flexibility)
       const nbCandidate = (data && data.notebook) ? data.notebook : data;
       const nb = ensureNotebookShape(nbCandidate);
       if (!nb) throw new Error("Invalid backup file");
@@ -1037,6 +1070,9 @@
       catch(e){ alert("Restore ALL failed: " + e.message); }
       finally{ fileAll.value = ""; }
     });
+
+    // NEW: Sort button
+    btnSortTitle.addEventListener("click", sortCurrentViewByTitle);
 
     // Init
     rebuildPageSelect();
