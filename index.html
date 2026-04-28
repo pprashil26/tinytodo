@@ -33,6 +33,9 @@
     *{ box-sizing:border-box; }
     html, body{ height: 100%; }
 
+    /* Prevent iOS text auto-resize weirdness */
+    html{ -webkit-text-size-adjust: 100%; }
+
     body{
       margin:0;
       color:var(--text);
@@ -121,9 +124,12 @@
         /* subtle top highlight */
         linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.0) 24px),
         /* vertical divider hint (like a margin line) */
-        linear-gradient(to right, transparent 0, transparent calc(var(--check-col) - 1px),
+        linear-gradient(to right,
+          transparent 0,
+          transparent calc(var(--check-col) - 1px),
           rgba(40,60,90,0.10) calc(var(--check-col) - 1px),
-          transparent var(--check-col)),
+          transparent var(--check-col)
+        ),
         /* ruled horizontal lines aligned with row height */
         repeating-linear-gradient(
           to bottom,
@@ -140,7 +146,6 @@
       grid-template-columns: var(--check-col) 1fr;
       align-items:center;
       min-height: var(--row-h);
-      /* No heavy borders; paper lines handle separation */
     }
 
     .cell{
@@ -155,7 +160,6 @@
     /* Checkbox column */
     .cell.check{
       justify-content:center;
-      /* keep a very faint column separation */
       border-right: 1px solid rgba(40,60,90,0.08);
     }
 
@@ -185,7 +189,6 @@
       text-decoration: line-through;
       color:#777;
     }
-
     .archived .task{
       color:#666;
     }
@@ -214,16 +217,9 @@
       line-height: 1.1;
     }
     button.action:active{ transform: translateY(1px); }
-    button.action.ghost{
-      background: rgba(255,255,255,0.55);
-    }
-    button.action.danger{
-      border-color: rgba(190, 80, 80, 0.35);
-    }
-    button.action:disabled{
-      opacity:0.45;
-      cursor: default;
-    }
+    button.action.ghost{ background: rgba(255,255,255,0.55); }
+    button.action.danger{ border-color: rgba(190, 80, 80, 0.35); }
+    button.action:disabled{ opacity:0.45; cursor: default; }
 
     .small{
       font-size:12px;
@@ -232,14 +228,8 @@
     }
     .file{ display:none; }
 
-    /* Mobile: slightly taller rows + full width */
+    /* Mobile: slightly taller rows + full width + prevent iOS zoom */
     @media (max-width: 520px){
-      
- /* Prevent iOS Safari zoom-on-focus */
-  input.task{
-    font-size: 16px;
-  }
-
       :root{
         --row-h: 28px;
         --font: 15px;
@@ -247,6 +237,10 @@
         --check-col: 34px;
         --indent-step: 18px;
       }
+
+      /* Prevent iOS Safari zoom-on-focus */
+      .task{ font-size: 16px; }
+
       input[type="checkbox"]{ width: 16px; height: 16px; }
       button.action{ padding: 9px 12px; }
       header{ padding: 8px 0; }
@@ -526,7 +520,7 @@
 
       const canAddRows = (view === "active");
 
-      // Ctrl/Cmd+Enter toggles done (fast power shortcut)
+      // Ctrl/Cmd+Enter toggles done
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
         e.preventDefault();
         it.done = !it.done;
@@ -549,7 +543,7 @@
         return;
       }
 
-      // Tab: indent/outdent (both views)
+      // Tab: indent/outdent
       if (e.key === "Tab"){
         e.preventDefault();
         if (e.shiftKey){
@@ -562,9 +556,7 @@
         return;
       }
 
-      // Backspace on empty:
-      // - Active view: delete row
-      // - Archive view: permanently delete row
+      // Backspace on empty: delete row (active) / permanently delete (archive)
       if (e.key === "Backspace"){
         if (input.value === "" && list.length > 1){
           e.preventDefault();
@@ -588,7 +580,6 @@
           focusIndex(Math.max(0, idx - 1));
         }
       }
-
       if (e.key === "ArrowDown"){
         const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
         if (atEnd || input.value.length === 0){
