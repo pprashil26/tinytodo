@@ -12,22 +12,24 @@
       --text:#111;
       --muted:#666;
 
-      --row-h: 28px;     /* compact desktop row height */
-      --font: 14px;
-      --pad-x: 6px;
+      /* Compact defaults (desktop) */
+      --row-h: 22px;
+      --font: 13px;
+      --pad-x: 4px;
 
-      --check-col: 34px;
-      --indent-step: 18px;
-      --max-indent: 6;   /* visual max (logic also clamps) */
+      --check-col: 28px;
+      --indent-step: 16px;
     }
 
-    *{ box-sizing: border-box; }
+    *{ box-sizing:border-box; }
     body{
       margin:0;
       background:var(--bg);
       color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       font-size: var(--font);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     header{
@@ -36,38 +38,51 @@
       z-index: 5;
       background: var(--bg);
       border-bottom: 1px solid var(--grid);
-      padding: 8px 10px;
+      padding: 6px 10px;
       display:flex;
       align-items:center;
-      gap:10px;
+      gap:8px;
     }
     .title{
       font-weight: 700;
-      font-size: 14px;
+      font-size: 13px;
       margin-right:auto;
+      letter-spacing: 0.2px;
     }
-    .hint{
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 60vw;
+    .tabs{
+      display:flex;
+      gap:6px;
+      align-items:center;
+    }
+    .tab{
+      border:1px solid var(--grid);
+      background:#fff;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font: inherit;
+      cursor:pointer;
+      line-height: 1;
+      color: #111;
+    }
+    .tab.active{
+      border-color:#bbb;
+      background:#f6f6f6;
+      font-weight: 600;
     }
 
     .wrap{
       max-width: 920px;
       margin: 0 auto;
-      padding: 8px 10px 22px;
+      padding: 8px 10px 18px;
     }
 
-    /* Excel-like grid */
     .grid{
       border: 1px solid var(--grid);
       border-radius: 10px;
       overflow: hidden;
       background:#fff;
     }
+
     .row{
       display:grid;
       grid-template-columns: var(--check-col) 1fr;
@@ -75,13 +90,14 @@
       border-bottom: 1px solid var(--grid);
       min-height: var(--row-h);
     }
-    .row:last-child{ border-bottom: none; }
+    .row:last-child{ border-bottom:none; }
 
     .cell{
       padding: 0 var(--pad-x);
       height: var(--row-h);
       display:flex;
       align-items:center;
+      min-width: 0;
     }
     .cell.check{
       justify-content:center;
@@ -89,21 +105,22 @@
     }
 
     input[type="checkbox"]{
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       margin:0;
       accent-color:#111;
     }
 
-    /* Single-line text cell */
     .task{
       width:100%;
       height: calc(var(--row-h) - 2px);
       border:none;
       outline:none;
       font: inherit;
-      padding: 0;
+      padding:0;
       background: transparent;
+
+      /* keep single-line + compact */
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -114,12 +131,14 @@
       color:#777;
     }
 
-    /* Indent: multiple levels */
+    .archived .task{
+      color:#666;
+    }
+
     .cell.text{
       padding-left: calc(var(--pad-x) + (var(--indent) * var(--indent-step)));
     }
 
-    /* Footer buttons: minimal */
     .bar{
       display:flex;
       gap:8px;
@@ -127,29 +146,49 @@
       flex-wrap: wrap;
       align-items:center;
     }
-    button{
+
+    button.action{
       border:1px solid var(--grid);
       background:#fff;
-      padding:8px 10px;
+      padding: 6px 9px;
       border-radius:10px;
       font: inherit;
       cursor:pointer;
+      line-height: 1.1;
     }
-    button:active{ transform: translateY(1px); }
+    button.action:active{ transform: translateY(1px); }
+    button.action.danger{
+      border-color:#e3b4b4;
+    }
+    button.action.ghost{
+      color:#333;
+      background:#fafafa;
+    }
+    button.action:disabled{
+      opacity:0.45;
+      cursor: default;
+    }
 
     .small{
       font-size:12px;
-      color:var(--muted);
+      color: var(--muted);
       margin-left:auto;
     }
 
     .file{ display:none; }
 
-    /* Mobile touch friendliness (still compact) */
+    /* Mobile: a bit taller for touch */
     @media (max-width: 520px){
-      :root { --row-h: 32px; --font: 15px; }
-      .hint{ display:none; }
-      button{ padding:10px 12px; }
+      :root{
+        --row-h: 28px;
+        --font: 15px;
+        --pad-x: 6px;
+        --check-col: 34px;
+        --indent-step: 18px;
+      }
+      input[type="checkbox"]{ width: 16px; height: 16px; }
+      button.action{ padding: 9px 12px; }
+      header{ padding: 8px 10px; }
     }
   </style>
 </head>
@@ -157,17 +196,28 @@
 <body>
   <header>
     <div class="title">Tiny Todo</div>
-    <div class="hint">Enter=new row • Tab/Shift+Tab indent • Backspace empty=delete • Export/Import=sync</div>
+    <div class="tabs">
+      <button class="tab" id="tabActive">Active</button>
+      <button class="tab" id="tabArchive">Archive (<span id="archCount">0</span>)</button>
+    </div>
   </header>
 
   <div class="wrap">
     <div class="grid" id="grid" aria-label="todo grid"></div>
 
     <div class="bar">
-      <button id="add">+ Row</button>
-      <button id="clearDone">Clear done</button>
-      <button id="export">Export</button>
-      <button id="import">Import</button>
+      <button class="action" id="add">+ Row</button>
+
+      <!-- Active-only -->
+      <button class="action ghost" id="archiveDone">Archive done</button>
+
+      <!-- Archive-only -->
+      <button class="action ghost" id="restoreFocused">Restore focused</button>
+      <button class="action danger" id="deleteFocused">Delete focused</button>
+      <button class="action danger" id="emptyArchive">Empty archive</button>
+
+      <button class="action" id="export">Export</button>
+      <button class="action" id="import">Import</button>
       <input class="file" id="file" type="file" accept="application/json" />
       <div class="small" id="status"></div>
     </div>
@@ -175,34 +225,95 @@
 
   <script>
     // -----------------------------
-    // Model + Storage (offline tasks)
+    // Model + Storage
     // -----------------------------
-    const KEY = "tiny_todo_v1";
+    const KEY_V2 = "tiny_todo_v2";
+    const KEY_V1 = "tiny_todo_v1";
     const MAX_INDENT = 6;
 
-    // item: { id, text, done, indent }
-    let items = load() || [
-      { id: uid(), text: "Task", done: false, indent: 0 },
-      { id: uid(), text: "Subtask (Tab to indent)", done: false, indent: 1 }
-    ];
+    // item: { id, text, done, indent, archived, archivedAt }
+    let items = load() || seed();
+
+    let view = "active"; // "active" | "archive"
+    let focusedId = null;
 
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
+    const tabActive = document.getElementById("tabActive");
+    const tabArchive = document.getElementById("tabArchive");
+    const archCountEl = document.getElementById("archCount");
+
+    const btnAdd = document.getElementById("add");
+    const btnArchiveDone = document.getElementById("archiveDone");
+    const btnRestoreFocused = document.getElementById("restoreFocused");
+    const btnDeleteFocused = document.getElementById("deleteFocused");
+    const btnEmptyArchive = document.getElementById("emptyArchive");
+    const btnExport = document.getElementById("export");
+    const btnImport = document.getElementById("import");
+    const file = document.getElementById("file");
+
+    function seed(){
+      return [
+        { id: uid(), text: "Task", done: false, indent: 0, archived: false, archivedAt: null },
+        { id: uid(), text: "Subtask (Tab to indent)", done: false, indent: 1, archived: false, archivedAt: null },
+      ];
+    }
 
     function uid(){
       return Math.random().toString(16).slice(2) + Date.now().toString(16);
     }
 
+    function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+
+    function normalize(raw){
+      if (!Array.isArray(raw)) return null;
+      return raw.map(x => ({
+        id: x.id || uid(),
+        text: String(x.text || ""),
+        done: !!x.done,
+        indent: clamp(Number(x.indent || 0), 0, MAX_INDENT),
+        archived: !!x.archived,
+        archivedAt: x.archivedAt || (x.archived ? Date.now() : null)
+      }));
+    }
+
     function load(){
       try{
-        const raw = localStorage.getItem(KEY);
-        return raw ? JSON.parse(raw) : null;
-      }catch(e){ return null; }
+        // Prefer v2
+        const raw2 = localStorage.getItem(KEY_V2);
+        if (raw2){
+          const parsed = JSON.parse(raw2);
+          const norm = normalize(parsed);
+          if (norm) return norm;
+        }
+
+        // Migrate v1 -> v2
+        const raw1 = localStorage.getItem(KEY_V1);
+        if (raw1){
+          const parsed1 = JSON.parse(raw1);
+          if (Array.isArray(parsed1)){
+            const migrated = parsed1.map(x => ({
+              id: x.id || uid(),
+              text: String(x.text || ""),
+              done: !!x.done,
+              indent: clamp(Number(x.indent || 0), 0, MAX_INDENT),
+              archived: false,
+              archivedAt: null
+            }));
+            localStorage.setItem(KEY_V2, JSON.stringify(migrated));
+            return migrated;
+          }
+        }
+        return null;
+      }catch(e){
+        return null;
+      }
     }
 
     function save(){
-      localStorage.setItem(KEY, JSON.stringify(items));
+      localStorage.setItem(KEY_V2, JSON.stringify(items));
       status("Saved");
+      updateCounts();
     }
 
     let statusTimer;
@@ -213,16 +324,54 @@
     }
 
     // -----------------------------
-    // Render
+    // View + Rendering
     // -----------------------------
-    function render(focusId){
+    function setView(v){
+      view = v;
+      tabActive.classList.toggle("active", view === "active");
+      tabArchive.classList.toggle("active", view === "archive");
+
+      // Toggle button visibility (minimal)
+      const inActive = view === "active";
+      btnAdd.disabled = !inActive; // no adding rows in archive
+      btnArchiveDone.style.display = inActive ? "" : "none";
+
+      btnRestoreFocused.style.display = inActive ? "none" : "";
+      btnDeleteFocused.style.display = inActive ? "none" : "";
+      btnEmptyArchive.style.display = inActive ? "none" : "";
+
+      render(focusedId);
+    }
+
+    function visibleItems(){
+      return items.filter(it => view === "active" ? !it.archived : it.archived);
+    }
+
+    function updateCounts(){
+      const count = items.filter(x => x.archived).length;
+      archCountEl.textContent = String(count);
+    }
+
+    function render(tryFocusId){
+      const vis = visibleItems();
       grid.innerHTML = "";
 
-      items.forEach((it, idx) => {
+      // ensure at least one row in active view
+      if (view === "active" && vis.length === 0){
+        const newItem = { id: uid(), text: "", done: false, indent: 0, archived: false, archivedAt: null };
+        items.push(newItem);
+        save();
+      }
+
+      const list = visibleItems();
+
+      list.forEach((it, idx) => {
         const row = document.createElement("div");
-        row.className = "row" + (it.done ? " done" : "");
+        row.className = "row"
+          + (it.done ? " done" : "")
+          + (it.archived ? " archived" : "");
         row.dataset.id = it.id;
-        row.dataset.index = idx;
+        row.dataset.index = String(idx);
 
         const cellCheck = document.createElement("div");
         cellCheck.className = "cell check";
@@ -230,11 +379,14 @@
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.checked = !!it.done;
+
         cb.addEventListener("change", () => {
+          // In archive view: checkbox still means done/not done (kept simple)
           it.done = cb.checked;
           save();
           render(it.id);
         });
+
         cellCheck.appendChild(cb);
 
         const cellText = document.createElement("div");
@@ -244,16 +396,18 @@
         const input = document.createElement("input");
         input.className = "task";
         input.value = it.text || "";
-        input.placeholder = (idx === 0 && !it.text) ? "Type a task..." : "";
+        input.placeholder = (view === "active" && idx === 0 && !it.text) ? "Type a task..." : "";
         input.spellcheck = false;
         input.autocomplete = "off";
+
+        input.addEventListener("focus", () => focusedId = it.id);
 
         input.addEventListener("input", () => {
           it.text = input.value;
           save();
         });
 
-        input.addEventListener("keydown", (e) => onKey(e, idx));
+        input.addEventListener("keydown", (e) => onKey(e, it.id));
 
         cellText.appendChild(input);
 
@@ -263,44 +417,78 @@
         grid.appendChild(row);
       });
 
-      // Restore focus
-      if (focusId){
-        const el = grid.querySelector(`.row[data-id="${focusId}"] .task`);
+      updateCounts();
+
+      if (tryFocusId){
+        const el = grid.querySelector(`.row[data-id="${tryFocusId}"] .task`);
         if (el){
           el.focus();
           const v = el.value;
           el.setSelectionRange(v.length, v.length);
+        } else {
+          // focus first row if requested focus is not visible
+          const first = grid.querySelector(".row .task");
+          if (first) first.focus();
         }
       }
     }
 
-    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+    function getItemById(id){
+      return items.find(x => x.id === id) || null;
+    }
 
     function focusIndex(i){
       const el = grid.querySelector(`.row[data-index="${i}"] .task`);
       if (el) el.focus();
     }
 
+    function indexInVisible(id){
+      const list = visibleItems();
+      return list.findIndex(x => x.id === id);
+    }
+
     // -----------------------------
     // Keyboard (Excel-like)
     // -----------------------------
-    function onKey(e, idx){
-      const it = items[idx];
+    function onKey(e, id){
+      const it = getItemById(id);
+      if (!it) return;
+
+      const list = visibleItems();
+      const idx = list.findIndex(x => x.id === id);
       const input = e.target;
 
-      // Enter: new row below (inherits indent)
+      // In archive view, prevent adding rows
+      const canAddRows = (view === "active");
+
       if (e.key === "Enter"){
+        // Ctrl/Cmd+Enter toggles done (fast)
+        if (e.ctrlKey || e.metaKey){
+          e.preventDefault();
+          it.done = !it.done;
+          save();
+          render(it.id);
+          return;
+        }
+
+        if (!canAddRows) return;
+
         e.preventDefault();
-        const newItem = { id: uid(), text: "", done: false, indent: it.indent };
-        items.splice(idx + 1, 0, newItem);
+        const newItem = { id: uid(), text: "", done: false, indent: it.indent, archived: false, archivedAt: null };
+
+        // Insert new row right after current item in the global items array
+        const globalIndex = items.findIndex(x => x.id === it.id);
+        items.splice(globalIndex + 1, 0, newItem);
+
         save();
         render(newItem.id);
         return;
       }
 
-      // Tab: indent/outdent
       if (e.key === "Tab"){
         e.preventDefault();
+
+        // Indent/outdent allowed in both views (kept simple)
         if (e.shiftKey){
           it.indent = clamp(it.indent - 1, 0, MAX_INDENT);
         } else {
@@ -311,19 +499,25 @@
         return;
       }
 
-      // Backspace on empty: delete row (keep at least one)
+      // Backspace on empty:
+      // - Active view: delete row (as before)
+      // - Archive view: permanently delete row (this matches "recycle bin")
       if (e.key === "Backspace"){
-        if (input.value === "" && items.length > 1){
+        if (input.value === "" && list.length > 1){
           e.preventDefault();
-          const prev = Math.max(0, idx - 1);
-          items.splice(idx, 1);
+
+          const globalIndex = items.findIndex(x => x.id === it.id);
+          items.splice(globalIndex, 1);
           save();
-          render(items[prev].id);
+
+          const prevIdx = Math.max(0, idx - 1);
+          const after = visibleItems()[prevIdx];
+          render(after ? after.id : null);
           return;
         }
       }
 
-      // Up/Down: move between rows when at boundaries
+      // Up/Down navigation when at boundaries
       if (e.key === "ArrowUp"){
         const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
         if (atStart || input.value.length === 0){
@@ -336,76 +530,137 @@
         const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
         if (atEnd || input.value.length === 0){
           e.preventDefault();
-          focusIndex(Math.min(items.length - 1, idx + 1));
+          focusIndex(Math.min(list.length - 1, idx + 1));
         }
-      }
-
-      // Optional ultra-minimal power shortcut (kept): Ctrl/Cmd+Enter toggles done
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
-        e.preventDefault();
-        it.done = !it.done;
-        save();
-        render(it.id);
       }
     }
 
     // -----------------------------
-    // Buttons
+    // Actions: Archive / Restore / Delete
     // -----------------------------
-    document.getElementById("add").addEventListener("click", () => {
-      const newItem = { id: uid(), text: "", done: false, indent: 0 };
-      items.push(newItem);
-      save();
-      render(newItem.id);
-    });
-
-    document.getElementById("clearDone").addEventListener("click", () => {
-      const before = items.length;
-      items = items.filter(x => !x.done);
-      if (items.length === 0){
-        items = [{ id: uid(), text: "", done: false, indent: 0 }];
+    function archiveDone(){
+      const toArchive = items.filter(x => !x.archived && x.done);
+      if (toArchive.length === 0){
+        status("No done tasks");
+        return;
       }
+      const now = Date.now();
+      toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
       save();
-      render(items[0].id);
-      status(`Removed ${before - items.length}`);
-    });
 
-    // Export/Import: simple cross-device sync
-    document.getElementById("export").addEventListener("click", () => {
+      // Keep focus sensible
+      const remaining = items.filter(x => !x.archived);
+      focusedId = remaining[0]?.id || null;
+      render(focusedId);
+      status(`Archived ${toArchive.length}`);
+    }
+
+    function restoreFocused(){
+      if (!focusedId){
+        status("No focus");
+        return;
+      }
+      const it = getItemById(focusedId);
+      if (!it || !it.archived){
+        status("Focus an archived task");
+        return;
+      }
+      it.archived = false;
+      it.archivedAt = null;
+      save();
+      status("Restored");
+      render(it.id);
+    }
+
+    function deleteFocused(){
+      if (!focusedId){
+        status("No focus");
+        return;
+      }
+      const it = getItemById(focusedId);
+      if (!it || !it.archived){
+        status("Focus an archived task");
+        return;
+      }
+      const globalIndex = items.findIndex(x => x.id === it.id);
+      items.splice(globalIndex, 1);
+      save();
+      status("Deleted");
+
+      const list = visibleItems();
+      focusedId = list[0]?.id || null;
+      render(focusedId);
+    }
+
+    function emptyArchive(){
+      const count = items.filter(x => x.archived).length;
+      if (count === 0){
+        status("Archive empty");
+        return;
+      }
+      const ok = confirm(`Permanently delete ${count} archived item(s)?`);
+      if (!ok) return;
+      items = items.filter(x => !x.archived);
+      save();
+      status("Archive emptied");
+      focusedId = visibleItems()[0]?.id || null;
+      render(focusedId);
+    }
+
+    // -----------------------------
+    // Export / Import (includes archive)
+    // -----------------------------
+    function doExport(){
       const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `tiny-todo-${new Date().toISOString().slice(0,10)}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
+    }
+
+    async function doImport(f){
+      const text = await f.text();
+      const data = JSON.parse(text);
+      const norm = normalize(data);
+      if (!norm) throw new Error("Invalid file");
+
+      items = norm.length ? norm : seed();
+      save();
+
+      // Return to active view after import
+      focusedId = items.find(x => !x.archived)?.id || items[0]?.id || null;
+      setView("active");
+      status("Imported");
+    }
+
+    // -----------------------------
+    // Wire up UI
+    // -----------------------------
+    tabActive.addEventListener("click", () => setView("active"));
+    tabArchive.addEventListener("click", () => setView("archive"));
+
+    btnAdd.addEventListener("click", () => {
+      if (view !== "active") return;
+      const newItem = { id: uid(), text: "", done: false, indent: 0, archived: false, archivedAt: null };
+      items.push(newItem);
+      save();
+      focusedId = newItem.id;
+      render(newItem.id);
     });
 
-    const file = document.getElementById("file");
-    document.getElementById("import").addEventListener("click", () => file.click());
+    btnArchiveDone.addEventListener("click", archiveDone);
+    btnRestoreFocused.addEventListener("click", restoreFocused);
+    btnDeleteFocused.addEventListener("click", deleteFocused);
+    btnEmptyArchive.addEventListener("click", emptyArchive);
 
+    btnExport.addEventListener("click", doExport);
+    btnImport.addEventListener("click", () => file.click());
     file.addEventListener("change", async () => {
       const f = file.files[0];
       if (!f) return;
-      const text = await f.text();
-
       try{
-        const data = JSON.parse(text);
-        if (!Array.isArray(data)) throw new Error("Invalid file");
-
-        items = data.map(x => ({
-          id: x.id || uid(),
-          text: String(x.text || ""),
-          done: !!x.done,
-          indent: clamp(Number(x.indent || 0), 0, MAX_INDENT)
-        }));
-
-        if (items.length === 0){
-          items = [{ id: uid(), text: "", done: false, indent: 0 }];
-        }
-
-        save();
-        render(items[0].id);
-        status("Imported");
+        await doImport(f);
       }catch(e){
         alert("Import failed: " + e.message);
       }finally{
@@ -413,8 +668,10 @@
       }
     });
 
-    // Initial render
-    render(items[0]?.id);
+    // Initial
+    updateCounts();
+    focusedId = items.find(x => !x.archived)?.id || items[0]?.id || null;
+    setView("active");
   </script>
 </body>
 </html>
