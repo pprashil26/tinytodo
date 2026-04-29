@@ -19,7 +19,7 @@
       --pad-x: 4px;
 
       --check-col: 28px;
-      --move-col: 36px;           /* Today arrow column */
+      --move-col: 36px;          /* Today arrow col */
       --indent-step: 16px;
       --max-indent: 6;
 
@@ -60,14 +60,12 @@
       align-items:center;
       gap:8px;
     }
-
-    /* Title toggles Compact Mode (no extra button) */
     .title{
       font-weight: 700;
       font-size: 13px;
       letter-spacing: 0.2px;
       white-space: nowrap;
-      cursor: pointer;
+      cursor: pointer;     /* tap/click toggles compact/full */
       user-select: none;
     }
 
@@ -258,6 +256,7 @@
 
     .file{ display:none; }
 
+    /* Clipboard fallback textarea */
     #clipFallback{
       position: fixed;
       left: -9999px;
@@ -268,10 +267,10 @@
       pointer-events: none;
     }
 
-    /* --------- Compact UI Mode ---------
+    /* -------- Compact UI Mode ----------
        Hide everything except:
        page dropdown, +Page, Rename
-    ------------------------------------ */
+    ----------------------------------- */
     body.compact-ui .tabs{ display:none !important; }
     body.compact-ui #deletePage{ display:none !important; }
     body.compact-ui .bar{ display:none !important; }
@@ -354,13 +353,14 @@
       <input class="file" id="fileJson" type="file" accept="application/json" />
       <input class="file" id="fileTxt" type="file" accept="text/plain,.txt" />
       <input class="file" id="fileAll" type="file" accept="application/json" />
-      <textarea id="clipFallback" aria-hidden="true"></textarea>
 
+      <textarea id="clipFallback" aria-hidden="true"></textarea>
       <div class="small" id="status"></div>
     </div>
   </div>
 
   <script>
+  (function(){
     // -----------------------------
     // Storage keys
     // -----------------------------
@@ -370,17 +370,9 @@
     const UI_KEY = "tiny_todo_ui_compact";
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
-    // UI state
-    let uiCompact = (localStorage.getItem(UI_KEY) === "1");
-    applyUiMode();
-
-    // Notebook model:
-    // { version, activePageId, pages: { [pageId]: { id, name, items, sortUndo } } }
-    let notebook = loadNotebook() || seedNotebook();
-    let view = "active";
-    let focusedId = null;
-
-    // DOM
+    // -----------------------------
+    // DOM refs (define BEFORE using)
+    // -----------------------------
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
     const uiToggleTitle = document.getElementById("uiToggleTitle");
@@ -417,24 +409,47 @@
     const fileTxt  = document.getElementById("fileTxt");
     const fileAll  = document.getElementById("fileAll");
 
-    function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
-    function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
-
+    // -----------------------------
+    // UI compact state (FIXED)
+    // -----------------------------
+    let uiCompact = (localStorage.getItem(UI_KEY) === "1");
     function applyUiMode(){
       document.body.classList.toggle("compact-ui", uiCompact);
-      uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
+      if (uiToggleTitle){
+        uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
+      }
     }
     function toggleUiMode(){
       uiCompact = !uiCompact;
       localStorage.setItem(UI_KEY, uiCompact ? "1" : "0");
       applyUiMode();
     }
+    applyUiMode();
 
-    // Seed data
+    // -----------------------------
+    // App state
+    // -----------------------------
+    let notebook = loadNotebook() || seedNotebook();
+    let view = "active";
+    let focusedId = null;
+
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
+    function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+
+    let statusTimer;
+    function status(msg){
+      statusEl.textContent = msg;
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => statusEl.textContent = "", 900);
+    }
+
     function seedItems(){
       return [
-        { id: uid(), text: "Task", done: false, indent: 0, archived: false, archivedAt: null },
-        { id: uid(), text: "Subtask (Tab to indent)", done: false, indent: 1, archived: false, archivedAt: null }
+        { id: uid(), text: "Task", done:false, indent:0, archived:false, archivedAt:null },
+        { id: uid(), text: "Subtask (Tab to indent)", done:false, indent:1, archived:false, archivedAt:null }
       ];
     }
 
@@ -465,10 +480,10 @@
       if (!nb || typeof nb !== "object") return null;
       if (!nb.pages || typeof nb.pages !== "object") return null;
 
-      const pageIds = Object.keys(nb.pages);
-      if (!pageIds.length) return null;
+      const ids = Object.keys(nb.pages);
+      if (!ids.length) return null;
 
-      for (const pid of pageIds){
+      for (const pid of ids){
         const p = nb.pages[pid];
         if (!p || typeof p !== "object") return null;
 
@@ -478,24 +493,23 @@
         if (!("sortUndo" in p)) p.sortUndo = null;
 
         if (p.items.filter(x => !x.archived).length === 0){
-          p.items.unshift({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
+          p.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
         }
       }
 
       if (!nb.activePageId || !nb.pages[nb.activePageId]){
-        nb.activePageId = pageIds[0];
+        nb.activePageId = ids[0];
       }
-
       nb.version = 1;
       return nb;
     }
 
-    // Load / migrate
     function loadNotebook(){
       try{
         const raw3 = localStorage.getItem(KEY_V3);
         if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
+        // migrate v2 -> v3
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
           const items = normalizeItems(JSON.parse(raw2));
@@ -503,12 +517,15 @@
           const nb = ensureNotebookShape({
             version: 1,
             activePageId: pid,
-            pages: { [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null } }
+            pages: {
+              [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null }
+            }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
           return nb;
         }
 
+        // migrate v1 -> v3
         const raw1 = localStorage.getItem(KEY_V1);
         if (raw1){
           const parsed1 = JSON.parse(raw1);
@@ -525,13 +542,14 @@
             const nb = ensureNotebookShape({
               version: 1,
               activePageId: pid,
-              pages: { [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null } }
+              pages: {
+                [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null }
+              }
             });
             localStorage.setItem(KEY_V3, JSON.stringify(nb));
             return nb;
           }
         }
-
         return null;
       }catch(e){
         return null;
@@ -540,22 +558,19 @@
 
     function saveNotebook(){
       localStorage.setItem(KEY_V3, JSON.stringify(notebook));
-      status("Saved");
       updateArchiveCount();
       rebuildPageSelect();
       updateSortToggleLabel();
+      status("Saved");
     }
 
-    let statusTimer;
-    function status(msg){
-      statusEl.textContent = msg;
-      clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => statusEl.textContent = "", 900);
+    function currentPage(){
+      return notebook.pages[notebook.activePageId];
     }
 
-    function currentPage(){ return notebook.pages[notebook.activePageId]; }
-
-    // Pages UI
+    // -----------------------------
+    // Pages
+    // -----------------------------
     function rebuildPageSelect(){
       const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
       pageSelect.innerHTML = "";
@@ -584,7 +599,7 @@
       notebook.pages[id] = {
         id,
         name: name.trim(),
-        items: [{ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null }],
+        items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
         sortUndo: null
       };
       notebook.activePageId = id;
@@ -611,8 +626,7 @@
       if (!ok) return;
 
       delete notebook.pages[p.id];
-      const remaining = Object.keys(notebook.pages);
-      notebook.activePageId = remaining[0];
+      notebook.activePageId = Object.keys(notebook.pages)[0];
       focusedId = null;
       saveNotebook();
       setView("active");
@@ -620,13 +634,15 @@
       status("Page deleted");
     }
 
-    // View + Rendering
+    // -----------------------------
+    // View + Render
+    // -----------------------------
     function setView(v){
       view = v;
       tabActive.classList.toggle("active", view === "active");
       tabArchive.classList.toggle("active", view === "archive");
 
-      const inActive = view === "active";
+      const inActive = (view === "active");
       btnAdd.disabled = !inActive;
       btnArchiveDone.style.display = inActive ? "" : "none";
 
@@ -654,7 +670,7 @@
 
       const vis = visibleItems();
       if (view === "active" && vis.length === 0){
-        p.items.push({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
+        p.items.push({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
         saveNotebook();
       }
 
@@ -672,7 +688,11 @@
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.checked = !!it.done;
-        cb.addEventListener("change", () => { it.done = cb.checked; saveNotebook(); render(it.id); });
+        cb.addEventListener("change", () => {
+          it.done = cb.checked;
+          saveNotebook();
+          render(it.id);
+        });
         cellCheck.appendChild(cb);
 
         const cellText = document.createElement("div");
@@ -755,9 +775,9 @@
       if (e.key === "Enter"){
         if (!canAddRows) return;
         e.preventDefault();
-        const newItem = { id: uid(), text: "", done:false, indent: it.indent, archived:false, archivedAt:null };
-        const globalIndex = p.items.findIndex(x => x.id === it.id);
-        p.items.splice(globalIndex + 1, 0, newItem);
+        const newItem = { id: uid(), text:"", done:false, indent: it.indent, archived:false, archivedAt:null };
+        const gi = p.items.findIndex(x => x.id === it.id);
+        p.items.splice(gi + 1, 0, newItem);
         saveNotebook();
         render(newItem.id);
         return;
@@ -774,8 +794,8 @@
       if (e.key === "Backspace"){
         if (input.value === "" && list.length > 1){
           e.preventDefault();
-          const globalIndex = p.items.findIndex(x => x.id === it.id);
-          p.items.splice(globalIndex, 1);
+          const gi = p.items.findIndex(x => x.id === it.id);
+          p.items.splice(gi, 1);
           saveNotebook();
           const prevIdx = Math.max(0, idx - 1);
           const after = visibleItems()[prevIdx];
@@ -791,7 +811,6 @@
           focusIndex(Math.max(0, idx - 1));
         }
       }
-
       if (e.key === "ArrowDown"){
         const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
         if (atEnd || input.value.length === 0){
@@ -801,11 +820,13 @@
       }
     }
 
+    // -----------------------------
     // Archive / Restore / Delete
+    // -----------------------------
     function archiveDone(){
       const p = currentPage();
       const toArchive = p.items.filter(x => !x.archived && x.done);
-      if (toArchive.length === 0){ status("No done tasks"); return; }
+      if (!toArchive.length){ status("No done tasks"); return; }
       const now = Date.now();
       toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
       saveNotebook();
@@ -839,7 +860,7 @@
     function emptyArchive(){
       const p = currentPage();
       const count = p.items.filter(x => x.archived).length;
-      if (count === 0){ status("Archive empty"); return; }
+      if (!count){ status("Archive empty"); return; }
       if (!confirm(`Permanently delete ${count} archived item(s)?`)) return;
       p.items = p.items.filter(x => !x.archived);
       saveNotebook();
@@ -848,7 +869,9 @@
       render(focusedId);
     }
 
+    // -----------------------------
     // Move block to Today (append bottom)
+    // -----------------------------
     function findTodayPageId(){
       for (const [pid, pg] of Object.entries(notebook.pages)){
         if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -867,7 +890,6 @@
     function getVisibleBlock(list, startId){
       const startIdx = list.findIndex(x => x.id === startId);
       if (startIdx < 0) return { ids: [], nextFocusId: null };
-
       const startIndent = Number(list[startIdx].indent || 0);
       const block = [list[startIdx]];
       for (let i = startIdx + 1; i < list.length; i++){
@@ -875,20 +897,17 @@
         if (ind > startIndent) block.push(list[i]);
         else break;
       }
-
       const after = list[startIdx + block.length];
       const before = list[startIdx - 1];
-      const nextFocusId = after ? after.id : (before ? before.id : null);
-      return { ids: block.map(x => x.id), nextFocusId };
+      return { ids: block.map(x => x.id), nextFocusId: after ? after.id : (before ? before.id : null) };
     }
 
     function moveBlockToToday(startId){
       const source = currentPage();
-      if (String(source.name || "").trim().toLowerCase() === "today") { status("Already Today"); return; }
-      if (view !== "active") { status("Active only"); return; }
+      if (String(source.name || "").trim().toLowerCase() === "today"){ status("Already Today"); return; }
+      if (view !== "active"){ status("Active only"); return; }
 
-      const vis = visibleItems();
-      const { ids, nextFocusId } = getVisibleBlock(vis, startId);
+      const { ids, nextFocusId } = getVisibleBlock(visibleItems(), startId);
       if (!ids.length) return;
 
       const todayId = ensureTodayPage();
@@ -897,17 +916,17 @@
       source.sortUndo = null;
       today.sortUndo = null;
 
-      const idSet = new Set(ids);
+      const setIds = new Set(ids);
       const moving = [];
       source.items = source.items.filter(it => {
-        if (idSet.has(it.id)){ moving.push(it); return false; }
+        if (setIds.has(it.id)){ moving.push(it); return false; }
         return true;
       });
 
       today.items.push(...moving);
 
       if (source.items.filter(x => !x.archived).length === 0){
-        source.items.unshift({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
+        source.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
       }
 
       saveNotebook();
@@ -916,7 +935,9 @@
       status(`Moved ${moving.length}`);
     }
 
+    // -----------------------------
     // Sort toggle (A→Z / Unsort)
+    // -----------------------------
     function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
 
     function blockify(list){
@@ -945,6 +966,7 @@
     function sortOrUnsortToggle(){
       const p = currentPage();
 
+      // Unsort if snapshot exists
       if (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
         const snapshot = p.sortUndo.ids.slice();
         const byId = new Map(p.items.map(x => [x.id, x]));
@@ -966,7 +988,9 @@
         return;
       }
 
+      // Save snapshot then sort current view blocks
       p.sortUndo = { ids: p.items.map(x => x.id), savedAt: Date.now() };
+
       const active = p.items.filter(x => !x.archived);
       const archived = p.items.filter(x => x.archived);
       const target = (view === "active") ? active : archived;
@@ -976,14 +1000,15 @@
       const sortedTarget = blocks.flatMap(b => b.items);
 
       p.items = (view === "active") ? [...sortedTarget, ...archived] : [...active, ...sortedTarget];
-
       saveNotebook();
       focusedId = sortedTarget[0]?.id || null;
       render(focusedId);
       status("Sorted");
     }
 
-    // Copy / Paste (minimal, block)
+    // -----------------------------
+    // Copy / Paste (block) – indent preserved
+    // -----------------------------
     async function writeClipboard(text){
       try{
         await navigator.clipboard.writeText(text);
@@ -1015,13 +1040,12 @@
       return tabs + mark + (it.text || "");
     }
 
-    function getActiveVisibleList(){
-      const p = currentPage();
-      return p.items.filter(it => !it.archived);
+    function getActiveList(){
+      return currentPage().items.filter(it => !it.archived);
     }
 
     function getBlockFromActive(startId){
-      const list = getActiveVisibleList();
+      const list = getActiveList();
       const startIdx = list.findIndex(x => x.id === startId);
       if (startIdx < 0) return [];
       const startIndent = Number(list[startIdx].indent || 0);
@@ -1067,6 +1091,7 @@
       if (!newItems.length) return;
       const p = currentPage();
 
+      // insert before archived section by default
       let insertIndex = p.items.findIndex(x => x.archived);
       if (insertIndex < 0) insertIndex = p.items.length;
 
@@ -1111,7 +1136,9 @@
       status("Pasted");
     }
 
-    // Export / Import / Backup / Restore
+    // -----------------------------
+    // Export / Import current page (JSON/TXT) + Backup/Restore ALL
+    // -----------------------------
     function downloadBlob(blob, filename){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -1134,7 +1161,7 @@
       const data = JSON.parse(text);
       p.items = normalizeItems(data);
       if (!p.items.length){
-        p.items = [{ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null }];
+        p.items = [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }];
       }
       p.sortUndo = null;
       saveNotebook();
@@ -1150,6 +1177,7 @@
       const lines = [];
       const active = p.items.filter(x => !x.archived);
       const archived = p.items.filter(x => x.archived);
+
       for (const it of active) lines.push(formatTxtLine(it));
       if (archived.length){
         lines.push(ARCHIVE_MARKER);
@@ -1162,6 +1190,7 @@
       const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
       let inArchive = false;
       const out = [];
+
       for (let line of rawLines){
         if (!line || line.trim() === "") continue;
         if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
@@ -1180,11 +1209,12 @@
           done = (m[1].toLowerCase() === "x");
           textPart = m[2] ?? "";
         }
+
         out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
       }
 
       if (out.filter(x => !x.archived).length === 0){
-        out.unshift({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
+        out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
       }
       return out;
     }
@@ -1194,7 +1224,6 @@
       const blob = new Blob([toPlainText()], { type: "text/plain;charset=utf-8" });
       downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
     }
-
     async function importTxtFile(f){
       const p = currentPage();
       const text = await f.text();
@@ -1233,7 +1262,9 @@
       status("Restored ALL");
     }
 
-    // Wire up UI
+    // -----------------------------
+    // Wire up events
+    // -----------------------------
     uiToggleTitle.addEventListener("click", toggleUiMode);
 
     tabActive.addEventListener("click", () => setView("active"));
@@ -1247,8 +1278,9 @@
     btnAdd.addEventListener("click", () => {
       if (view !== "active") return;
       const p = currentPage();
-      const newItem = { id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null };
+      const newItem = { id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null };
       p.items.push(newItem);
+      p.sortUndo = null;
       saveNotebook();
       focusedId = newItem.id;
       render(newItem.id);
@@ -1262,7 +1294,7 @@
     btnCopyTasks.addEventListener("click", doCopy);
     btnPasteTasks.addEventListener("click", doPaste);
 
-    // keyboard shortcuts: Ctrl/Cmd+Shift+C/V (only in task input)
+    // Ctrl/Cmd+Shift+C/V inside task input
     document.addEventListener("keydown", (e) => {
       const isMac = navigator.platform.toUpperCase().includes("MAC");
       const mod = isMac ? e.metaKey : e.ctrlKey;
@@ -1271,7 +1303,7 @@
       if (!mod || !e.shiftKey || !inTask) return;
 
       if (e.key.toLowerCase() === "c"){
-        if (el.selectionStart !== el.selectionEnd) return;
+        if (el.selectionStart !== el.selectionEnd) return; // normal copy if selection
         e.preventDefault();
         doCopy();
       }
@@ -1313,11 +1345,15 @@
 
     btnSortToggle.addEventListener("click", sortOrUnsortToggle);
 
+    // -----------------------------
     // Init
+    // -----------------------------
     rebuildPageSelect();
     focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
     setView("active");
     updateSortToggleLabel();
+
+  })();
   </script>
 </body>
 </html>
