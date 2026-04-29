@@ -7,16 +7,13 @@
 
   <style>
     :root{
-      /* Paper palette */
       --paper: #fcfbf7;
       --paper-edge: #efece3;
       --paper-line: rgba(40, 60, 90, 0.08);
 
-      /* Text */
       --text:#121212;
       --muted:#6a6a6a;
 
-      /* Compact sizing */
       --row-h: 22px;
       --font: 13px;
       --pad-x: 4px;
@@ -25,7 +22,6 @@
       --indent-step: 16px;
       --max-indent: 6;
 
-      /* A6 width */
       --a6w: 105mm;
     }
 
@@ -305,7 +301,7 @@
       <button class="action" id="backupAll">Backup ALL</button>
       <button class="action danger" id="restoreAll">Restore ALL</button>
 
-      <!-- NEW: Sort by title -->
+      <!-- Sort toggle -->
       <button class="action" id="sortTitle">Sort A→Z</button>
 
       <input class="file" id="fileJson" type="file" accept="application/json" />
@@ -317,9 +313,6 @@
   </div>
 
   <script>
-    // -----------------------------
-    // Storage keys
-    // -----------------------------
     const KEY_V3 = "tiny_todo_v3_pages";
     const KEY_V2 = "tiny_todo_v2";
     const KEY_V1 = "tiny_todo_v1";
@@ -329,7 +322,6 @@
     let view = "active";
     let focusedId = null;
 
-    // DOM
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
 
@@ -356,18 +348,13 @@
     const btnBackupAll  = document.getElementById("backupAll");
     const btnRestoreAll = document.getElementById("restoreAll");
 
-    const btnSortTitle  = document.getElementById("sortTitle");
+    const btnSortToggle = document.getElementById("sortTitle");
 
     const fileJson = document.getElementById("fileJson");
     const fileTxt  = document.getElementById("fileTxt");
     const fileAll  = document.getElementById("fileAll");
 
-    // -----------------------------
-    // Helpers
-    // -----------------------------
-    function uid(){
-      return Math.random().toString(16).slice(2) + Date.now().toString(16);
-    }
+    function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
     function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
     function seedItems(){
@@ -383,7 +370,7 @@
         version: 1,
         activePageId: pid,
         pages: {
-          [pid]: { id: pid, name: "Personal", items: seedItems() }
+          [pid]: { id: pid, name: "Personal", items: seedItems(), sortUndo: null }
         }
       };
     }
@@ -410,10 +397,10 @@
       for (const pid of pageIds){
         const p = nb.pages[pid];
         if (!p || typeof p !== "object") return null;
-
         p.id = pid;
         p.name = String(p.name || "Untitled");
         p.items = normalizeItems(p.items);
+        if (!("sortUndo" in p)) p.sortUndo = null;
 
         if (p.items.filter(x => !x.archived).length === 0){
           p.items.unshift({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
@@ -428,16 +415,10 @@
       return nb;
     }
 
-    // -----------------------------
-    // Load / Save with Migration
-    // -----------------------------
     function loadNotebook(){
       try{
         const raw3 = localStorage.getItem(KEY_V3);
-        if (raw3){
-          const parsed = JSON.parse(raw3);
-          return ensureNotebookShape(parsed);
-        }
+        if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
@@ -446,9 +427,7 @@
           const nb = ensureNotebookShape({
             version: 1,
             activePageId: pid,
-            pages: {
-              [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems() }
-            }
+            pages: { [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null } }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
           return nb;
@@ -470,9 +449,7 @@
             const nb = ensureNotebookShape({
               version: 1,
               activePageId: pid,
-              pages: {
-                [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems() }
-              }
+              pages: { [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null } }
             });
             localStorage.setItem(KEY_V3, JSON.stringify(nb));
             return nb;
@@ -490,6 +467,7 @@
       status("Saved");
       updateArchiveCount();
       rebuildPageSelect();
+      updateSortToggleLabel();
     }
 
     let statusTimer;
@@ -499,13 +477,9 @@
       statusTimer = setTimeout(() => statusEl.textContent = "", 900);
     }
 
-    function currentPage(){
-      return notebook.pages[notebook.activePageId];
-    }
+    function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-    // -----------------------------
     // Pages UI
-    // -----------------------------
     function rebuildPageSelect(){
       const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
       const currentId = notebook.activePageId;
@@ -537,7 +511,8 @@
       notebook.pages[id] = {
         id,
         name: name.trim(),
-        items: [{ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null }]
+        items: [{ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null }],
+        sortUndo: null
       };
       notebook.activePageId = id;
       focusedId = notebook.pages[id].items[0].id;
@@ -559,13 +534,11 @@
     function deletePage(){
       const ids = Object.keys(notebook.pages);
       if (ids.length <= 1) return;
-
       const p = currentPage();
       const ok = confirm(`Delete page "${p.name}"?\nThis permanently removes all tasks in it.`);
       if (!ok) return;
 
       delete notebook.pages[p.id];
-
       const remaining = Object.keys(notebook.pages);
       notebook.activePageId = remaining[0];
       focusedId = null;
@@ -576,9 +549,7 @@
       status("Page deleted");
     }
 
-    // -----------------------------
-    // View + Rendering (per page)
-    // -----------------------------
+    // View/render
     function setView(v){
       view = v;
       tabActive.classList.toggle("active", view === "active");
@@ -592,6 +563,7 @@
       btnDeleteFocused.style.display  = inActive ? "none" : "";
       btnEmptyArchive.style.display   = inActive ? "none" : "";
 
+      updateSortToggleLabel();
       render(focusedId);
     }
 
@@ -659,6 +631,7 @@
       });
 
       updateArchiveCount();
+      updateSortToggleLabel();
 
       if (tryFocusId){
         const el = grid.querySelector(`.row[data-id="${tryFocusId}"] .task`);
@@ -673,17 +646,13 @@
       }
     }
 
-    function getItemById(id){
-      return currentPage().items.find(x => x.id === id) || null;
-    }
+    function getItemById(id){ return currentPage().items.find(x => x.id === id) || null; }
     function focusIndex(i){
       const el = grid.querySelector(`.row[data-index="${i}"] .task`);
       if (el) el.focus();
     }
 
-    // -----------------------------
     // Keyboard
-    // -----------------------------
     function onKey(e, id){
       const p = currentPage();
       const it = getItemById(id);
@@ -717,9 +686,7 @@
 
       if (e.key === "Tab"){
         e.preventDefault();
-        it.indent = e.shiftKey
-          ? clamp(it.indent - 1, 0, MAX_INDENT)
-          : clamp(it.indent + 1, 0, MAX_INDENT);
+        it.indent = e.shiftKey ? clamp(it.indent - 1, 0, MAX_INDENT) : clamp(it.indent + 1, 0, MAX_INDENT);
         saveNotebook();
         render(it.id);
         return;
@@ -755,9 +722,7 @@
       }
     }
 
-    // -----------------------------
-    // Archive / Restore / Delete (per page)
-    // -----------------------------
+    // Archive / Restore / Delete
     function archiveDone(){
       const p = currentPage();
       const toArchive = p.items.filter(x => !x.archived && x.done);
@@ -807,21 +772,14 @@
       render(focusedId);
     }
 
-    // -----------------------------
-    // NEW: Sort by Title (A→Z), hierarchy-safe
-    // -----------------------------
-    function normTitle(s){
-      return String(s || "").trim().toLocaleLowerCase();
-    }
+    // Sort toggle
+    function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
 
-    // Split array into blocks: each indent-0 item + its following children (indent >0)
     function blockify(list){
       const blocks = [];
       let current = null;
-
       for (const it of list){
         const isTop = (Number(it.indent) === 0);
-
         if (isTop || !current){
           current = { key: normTitle(it.text), items: [it] };
           blocks.push(current);
@@ -829,48 +787,67 @@
           current.items.push(it);
         }
       }
-
-      // Ensure key exists even if empty
-      for (const b of blocks){
-        if (!b.key) b.key = "";
-      }
-
+      for (const b of blocks){ if (!b.key) b.key = ""; }
       return blocks;
     }
 
-    function sortCurrentViewByTitle(){
+    function updateSortToggleLabel(){
+      const p = currentPage();
+      btnSortToggle.textContent = (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length)
+        ? "Unsort"
+        : "Sort A→Z";
+    }
+
+    function sortOrUnsortToggle(){
       const p = currentPage();
 
-      // Separate active vs archived (page-local)
+      // If undo exists => unsort
+      if (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
+        const snapshot = p.sortUndo.ids.slice();
+        const byId = new Map(p.items.map(x => [x.id, x]));
+
+        const restored = [];
+        for (const id of snapshot){
+          const it = byId.get(id);
+          if (it) restored.push(it);
+        }
+        const restoredIds = new Set(restored.map(x => x.id));
+        for (const it of p.items){
+          if (!restoredIds.has(it.id)) restored.push(it);
+        }
+
+        p.items = restored;
+        p.sortUndo = null;
+
+        saveNotebook();
+        focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
+        render(focusedId);
+        status("Unsorted");
+        return;
+      }
+
+      // Otherwise => sort and save undo snapshot (one-level)
+      p.sortUndo = { ids: p.items.map(x => x.id), savedAt: Date.now() };
+
       const active = p.items.filter(x => !x.archived);
       const archived = p.items.filter(x => x.archived);
-
       const target = (view === "active") ? active : archived;
 
-      // Build blocks and sort by the parent (block) title
       const blocks = blockify(target);
-
       blocks.sort((a,b) => a.key.localeCompare(b.key));
-
       const sortedTarget = blocks.flatMap(b => b.items);
 
-      // Reassemble page items (keep other section as-is)
       p.items = (view === "active")
         ? [...sortedTarget, ...archived]
         : [...active, ...sortedTarget];
 
       saveNotebook();
-      focusedId = (view === "active")
-        ? (sortedTarget.find(x => !x.archived)?.id || sortedTarget[0]?.id || null)
-        : (sortedTarget[0]?.id || null);
-
+      focusedId = sortedTarget[0]?.id || null;
       render(focusedId);
       status("Sorted A→Z");
     }
 
-    // -----------------------------
-    // Export / Import (files)
-    // -----------------------------
+    // Export/Import/Backup/Restore (same as before)
     function downloadBlob(blob, filename){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -893,6 +870,7 @@
       const data = JSON.parse(text);
       const items = normalizeItems(data);
       p.items = items.length ? items : [{ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null }];
+      p.sortUndo = null;
       saveNotebook();
       focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
       setView("active");
@@ -928,11 +906,7 @@
 
       for (let line of rawLines){
         if (!line || line.trim() === "") continue;
-
-        if (line.trim() === ARCHIVE_MARKER){
-          inArchive = true;
-          continue;
-        }
+        if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
 
         let indent = 0;
         while (line.startsWith("\t")){ indent++; line = line.slice(1); }
@@ -978,6 +952,7 @@
       const p = currentPage();
       const text = await f.text();
       p.items = fromPlainText(text);
+      p.sortUndo = null;
       saveNotebook();
       focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
       setView("active");
@@ -985,11 +960,7 @@
     }
 
     function backupAll(){
-      const payload = {
-        format: "tiny-todo-backup",
-        exportedAt: new Date().toISOString(),
-        notebook
-      };
+      const payload = { format: "tiny-todo-backup", exportedAt: new Date().toISOString(), notebook };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       downloadBlob(blob, `tiny-todo-backup-${new Date().toISOString().slice(0,10)}.json`);
       status("Backup exported");
@@ -1015,9 +986,7 @@
       status("Restored ALL");
     }
 
-    // -----------------------------
     // Wire up UI
-    // -----------------------------
     tabActive.addEventListener("click", () => setView("active"));
     tabArchive.addEventListener("click", () => setView("archive"));
 
@@ -1071,13 +1040,14 @@
       finally{ fileAll.value = ""; }
     });
 
-    // NEW: Sort button
-    btnSortTitle.addEventListener("click", sortCurrentViewByTitle);
+    // Sort toggle
+    btnSortToggle.addEventListener("click", sortOrUnsortToggle);
 
     // Init
     rebuildPageSelect();
     focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
     setView("active");
+    updateSortToggleLabel();
   </script>
 </body>
 </html>
