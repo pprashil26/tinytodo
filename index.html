@@ -19,11 +19,14 @@
       --pad-x: 4px;
 
       --check-col: 28px;
-      --move-col: 36px;          /* Today arrow col */
+      --move-col: 36px;
       --indent-step: 16px;
       --max-indent: 6;
 
       --a6w: 105mm;
+
+      --sidebar-w: 170px;
+      --sidebar-gap: 12px;
     }
 
     *{ box-sizing:border-box; }
@@ -45,27 +48,30 @@
     header{
       position: sticky;
       top: 0;
-      z-index: 5;
+      z-index: 10;
       background: rgba(244,244,244,0.9);
       backdrop-filter: blur(6px);
       border-bottom: 1px solid rgba(0,0,0,0.06);
       padding: 6px 0;
     }
+
     .header-inner{
       width: 100%;
-      max-width: var(--a6w);
+      max-width: calc(var(--a6w) + var(--sidebar-w) + var(--sidebar-gap) + 16px);
       margin: 0 auto;
       padding: 0 8px;
       display:flex;
       align-items:center;
       gap:8px;
     }
+
+    /* Title toggles Compact Mode */
     .title{
       font-weight: 700;
       font-size: 13px;
       letter-spacing: 0.2px;
       white-space: nowrap;
-      cursor: pointer;     /* tap/click toggles compact/full */
+      cursor: pointer;
       user-select: none;
     }
 
@@ -80,7 +86,7 @@
     }
 
     .page-select{
-      max-width: 140px;
+      max-width: 180px;
       border:1px solid rgba(0,0,0,0.10);
       background: rgba(255,255,255,0.75);
       border-radius: 999px;
@@ -106,31 +112,31 @@
     .pill-btn:active{ transform: translateY(1px); }
     .pill-btn:disabled{ opacity:0.45; cursor: default; }
 
-    .tabs{ display:flex; gap:6px; align-items:center; }
-    .tab{
-      border:1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.7);
-      padding: 4px 8px;
-      border-radius: 999px;
-      font: inherit;
-      cursor:pointer;
-      line-height: 1;
-      color: var(--text);
-      height: 26px;
-    }
-    .tab.active{
-      border-color: rgba(0,0,0,0.18);
-      background: rgba(255,255,255,0.95);
-      font-weight: 600;
-    }
-
+    /* Layout */
     .wrap{
       width: 100%;
-      max-width: var(--a6w);
+      max-width: calc(var(--a6w) + var(--sidebar-w) + var(--sidebar-gap) + 16px);
       margin: 0 auto;
       padding: 10px 8px 18px;
+      display:flex;
+      gap: var(--sidebar-gap);
+      align-items:flex-start;
     }
 
+    .sidebar{
+      width: var(--sidebar-w);
+      flex: 0 0 var(--sidebar-w);
+      position: sticky;
+      top: 54px;
+      align-self: flex-start;
+    }
+
+    .main{
+      width: 100%;
+      max-width: var(--a6w);
+    }
+
+    /* Paper */
     .paper{
       border: 1px solid var(--paper-edge);
       border-radius: 14px;
@@ -225,38 +231,85 @@
     .today-btn:active{ transform: translateY(1px); }
     .today-btn:disabled{ opacity: 0.35; cursor: default; }
 
-    .bar{
-      display:flex;
-      gap:8px;
-      margin-top:10px;
-      flex-wrap: wrap;
-      align-items:center;
+    /* Sidebar UI */
+    .side-block{
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 14px;
+      padding: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     }
 
-    button.action{
+    .side-stack{
+      display:flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .side-btn{
+      width: 100%;
       border:1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.75);
-      padding: 6px 9px;
+      background: rgba(255,255,255,0.85);
+      padding: 8px 10px;
       border-radius: 12px;
       font: inherit;
       cursor:pointer;
       line-height: 1.1;
-      white-space: nowrap;
+      text-align: left;
     }
-    button.action:active{ transform: translateY(1px); }
-    button.action.ghost{ background: rgba(255,255,255,0.55); }
-    button.action.danger{ border-color: rgba(190, 80, 80, 0.35); }
-    button.action:disabled{ opacity:0.45; cursor: default; }
+    .side-btn:active{ transform: translateY(1px); }
+    .side-btn.danger{ border-color: rgba(190, 80, 80, 0.35); }
+    .side-btn:disabled{ opacity: 0.45; cursor: default; }
+
+    details.group{
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.75);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    details.group > summary{
+      list-style: none;
+      cursor: pointer;
+      padding: 8px 10px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      user-select: none;
+      font-weight: 600;
+    }
+    details.group > summary::-webkit-details-marker{ display:none; }
+
+    details.group > summary::after{
+      content: "›";
+      display:inline-block;
+      transform: rotate(90deg);
+      transition: transform 120ms ease;
+      opacity: 0.7;
+      font-size: 16px;
+      line-height: 1;
+    }
+    details.group[open] > summary::after{
+      transform: rotate(-90deg);
+    }
+
+    .group-body{
+      padding: 8px 10px 10px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      display:flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
     .small{
       font-size:12px;
       color: var(--muted);
-      margin-left:auto;
+      margin-top: 8px;
+      padding: 0 2px;
+      min-height: 16px;
     }
 
     .file{ display:none; }
 
-    /* Clipboard fallback textarea */
     #clipFallback{
       position: fixed;
       left: -9999px;
@@ -267,15 +320,61 @@
       pointer-events: none;
     }
 
+    /* Toast visible even in compact mode */
+    #toast{
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #222;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.10);
+      display: none;
+      z-index: 30;
+      max-width: 90vw;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Floating +Row in compact mode */
+    #addFab{
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 20;
+      display:none;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.92);
+      border-radius: 999px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor:pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+    }
+    #addFab:active{ transform: translateY(1px); }
+
     /* -------- Compact UI Mode ----------
-       Hide everything except:
-       page dropdown, +Page, Rename
-       BUT KEEP move-to-today (→) feature visible
+       Keep only: page dropdown, +Page, Rename
+       +Row always visible via addFab
+       Move-to-Today remains in grid
     ----------------------------------- */
-    body.compact-ui .tabs{ display:none !important; }
+    body.compact-ui .sidebar{ display:none !important; }
     body.compact-ui #deletePage{ display:none !important; }
-    body.compact-ui .bar{ display:none !important; }
-    /* NOTE: do NOT hide .cell.move and do NOT change .row columns */
+    body.compact-ui #addFab{ display:block; }
+
+    body.compact-ui .wrap{
+      display:block;
+      max-width: var(--a6w);
+    }
+    body.compact-ui .main{
+      max-width: var(--a6w);
+      margin: 0 auto;
+    }
 
     @media (max-width: 520px){
       :root{
@@ -285,21 +384,13 @@
         --check-col: 34px;
         --move-col: 44px;
         --indent-step: 18px;
+        --sidebar-w: 175px;
       }
       .task{ font-size: 16px; } /* prevent iOS zoom */
       input[type="checkbox"]{ width: 16px; height: 16px; }
-      button.action{ padding: 9px 12px; }
       header{ padding: 8px 0; }
-      .header-inner, .wrap{ max-width: 100%; }
-      .page-select{ max-width: 120px; }
       .today-btn{ height: 26px; padding: 0 10px; }
-    }
-
-    @media print{
-      body{ background: #fff; }
-      @page { size: A6; margin: 6mm; }
-      header{ position: static; background:#fff; border-bottom:1px solid #ddd; }
-      .paper{ box-shadow:none; }
+      #addFab{ padding: 12px 16px; }
     }
   </style>
 </head>
@@ -314,83 +405,113 @@
         <button class="pill-btn" id="newPage" title="New page">+ Page</button>
         <button class="pill-btn" id="renamePage" title="Rename page">Rename</button>
         <button class="pill-btn" id="deletePage" title="Delete page">Del</button>
-
-        <div class="tabs">
-          <button class="tab" id="tabActive">Active</button>
-          <button class="tab" id="tabArchive">Archive (<span id="archCount">0</span>)</button>
-        </div>
       </div>
     </div>
   </header>
 
+  <div id="toast"></div>
+
+  <!-- Compact mode: +Row always visible -->
+  <button id="addFab" title="+ Row">+ Row</button>
+
   <div class="wrap">
-    <div class="paper">
-      <div class="grid" id="grid" aria-label="todo grid"></div>
-    </div>
+    <!-- Left sidebar (non-compact) -->
+    <aside class="sidebar">
+      <div class="side-block">
+        <div class="side-stack">
 
-    <div class="bar">
-      <button class="action" id="add">+ Row</button>
+          <!-- + Row standalone -->
+          <button class="side-btn" id="addSide">+ Row</button>
 
-      <button class="action ghost" id="archiveDone">Archive done</button>
+          <!-- Sort standalone -->
+          <button class="side-btn" id="sortTitle">Sort A→Z</button>
 
-      <button class="action ghost" id="restoreFocused">Restore focused</button>
-      <button class="action danger" id="deleteFocused">Delete focused</button>
-      <button class="action danger" id="emptyArchive">Empty archive</button>
+          <!-- Copy/Paste group -->
+          <details class="group">
+            <summary>Clipboard</summary>
+            <div class="group-body">
+              <button class="side-btn" id="copyTasks">Copy</button>
+              <button class="side-btn" id="pasteTasks">Paste</button>
+            </div>
+          </details>
 
-      <button class="action" id="copyTasks">Copy</button>
-      <button class="action" id="pasteTasks">Paste</button>
+          <!-- Export/Import/Backup group -->
+          <details class="group">
+            <summary>Backup</summary>
+            <div class="group-body">
+              <button class="side-btn" id="exportJson">Export JSON</button>
+              <button class="side-btn" id="importJson">Import JSON</button>
 
-      <button class="action" id="exportJson">Export JSON</button>
-      <button class="action" id="importJson">Import JSON</button>
-      <button class="action" id="exportTxt">Export TXT</button>
-      <button class="action" id="importTxt">Import TXT</button>
+              <button class="side-btn" id="exportTxt">Export TXT</button>
+              <button class="side-btn" id="importTxt">Import TXT</button>
 
-      <button class="action" id="backupAll">Backup ALL</button>
-      <button class="action danger" id="restoreAll">Restore ALL</button>
+              <button class="side-btn" id="backupAll">Backup ALL</button>
+              <button class="side-btn danger" id="restoreAll">Restore ALL</button>
+            </div>
+          </details>
 
-      <button class="action" id="sortTitle">Sort A→Z</button>
+          <!-- Archive actions (extra group to keep full functionality) -->
+          <details class="group">
+            <summary>Archive</summary>
+            <div class="group-body">
+              <button class="side-btn" id="archiveDone">Archive done</button>
+              <button class="side-btn" id="restoreFocused">Restore focused</button>
+              <button class="side-btn danger" id="deleteFocused">Delete focused</button>
+              <button class="side-btn danger" id="emptyArchive">Empty archive</button>
+            </div>
+          </details>
 
+          <!-- Del + Active/Archive group -->
+          <details class="group">
+            <summary>Page/View</summary>
+            <div class="group-body">
+              <button class="side-btn" id="tabActiveSide">Active</button>
+              <button class="side-btn" id="tabArchiveSide">Archive</button>
+              <button class="side-btn danger" id="deletePageSide">Del Page</button>
+            </div>
+          </details>
+
+          <div class="small" id="status"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main paper -->
+    <main class="main">
+      <div class="paper">
+        <div class="grid" id="grid" aria-label="todo grid"></div>
+      </div>
+
+      <!-- hidden inputs + clipboard fallback -->
       <input class="file" id="fileJson" type="file" accept="application/json" />
       <input class="file" id="fileTxt" type="file" accept="text/plain,.txt" />
       <input class="file" id="fileAll" type="file" accept="application/json" />
-
       <textarea id="clipFallback" aria-hidden="true"></textarea>
-      <div class="small" id="status"></div>
-    </div>
+    </main>
   </div>
 
   <script>
   (function(){
-    // -----------------------------
-    // Storage keys
-    // -----------------------------
     const KEY_V3 = "tiny_todo_v3_pages";
     const KEY_V2 = "tiny_todo_v2";
     const KEY_V1 = "tiny_todo_v1";
     const UI_KEY = "tiny_todo_ui_compact";
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
-    // -----------------------------
-    // DOM refs (define before using)
-    // -----------------------------
+    // DOM
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
+    const toastEl = document.getElementById("toast");
     const uiToggleTitle = document.getElementById("uiToggleTitle");
-
-    const tabActive = document.getElementById("tabActive");
-    const tabArchive = document.getElementById("tabArchive");
-    const archCountEl = document.getElementById("archCount");
 
     const pageSelect = document.getElementById("pageSelect");
     const btnNewPage = document.getElementById("newPage");
     const btnRenamePage = document.getElementById("renamePage");
     const btnDeletePage = document.getElementById("deletePage");
 
-    const btnAdd = document.getElementById("add");
-    const btnArchiveDone = document.getElementById("archiveDone");
-    const btnRestoreFocused = document.getElementById("restoreFocused");
-    const btnDeleteFocused = document.getElementById("deleteFocused");
-    const btnEmptyArchive = document.getElementById("emptyArchive");
+    const btnAddSide = document.getElementById("addSide");
+    const btnAddFab = document.getElementById("addFab");
+    const btnSortToggle = document.getElementById("sortTitle");
 
     const btnCopyTasks = document.getElementById("copyTasks");
     const btnPasteTasks = document.getElementById("pasteTasks");
@@ -399,25 +520,27 @@
     const btnImportJson = document.getElementById("importJson");
     const btnExportTxt  = document.getElementById("exportTxt");
     const btnImportTxt  = document.getElementById("importTxt");
-
     const btnBackupAll  = document.getElementById("backupAll");
     const btnRestoreAll = document.getElementById("restoreAll");
 
-    const btnSortToggle = document.getElementById("sortTitle");
+    const btnArchiveDone = document.getElementById("archiveDone");
+    const btnRestoreFocused = document.getElementById("restoreFocused");
+    const btnDeleteFocused = document.getElementById("deleteFocused");
+    const btnEmptyArchive = document.getElementById("emptyArchive");
+
+    const tabActiveSide = document.getElementById("tabActiveSide");
+    const tabArchiveSide = document.getElementById("tabArchiveSide");
+    const btnDeletePageSide = document.getElementById("deletePageSide");
 
     const fileJson = document.getElementById("fileJson");
     const fileTxt  = document.getElementById("fileTxt");
     const fileAll  = document.getElementById("fileAll");
 
-    // -----------------------------
-    // UI compact state
-    // -----------------------------
+    // Compact mode
     let uiCompact = (localStorage.getItem(UI_KEY) === "1");
     function applyUiMode(){
       document.body.classList.toggle("compact-ui", uiCompact);
-      if (uiToggleTitle){
-        uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
-      }
+      uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
     }
     function toggleUiMode(){
       uiCompact = !uiCompact;
@@ -426,24 +549,31 @@
     }
     applyUiMode();
 
-    // -----------------------------
     // App state
-    // -----------------------------
     let notebook = loadNotebook() || seedNotebook();
-    let view = "active";
+    let view = "active";         // "active" | "archive"
     let focusedId = null;
 
-    // -----------------------------
     // Helpers
-    // -----------------------------
     function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
     function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
     let statusTimer;
     function status(msg){
-      statusEl.textContent = msg;
-      clearTimeout(statusTimer);
-      statusTimer = setTimeout(() => statusEl.textContent = "", 900);
+      statusEl.textContent = msg || "";
+      if (msg){
+        toastEl.textContent = msg;
+        toastEl.style.display = "block";
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => {
+          toastEl.style.display = "none";
+          toastEl.textContent = "";
+          statusEl.textContent = "";
+        }, 900);
+      } else {
+        toastEl.style.display = "none";
+        toastEl.textContent = "";
+      }
     }
 
     function seedItems(){
@@ -479,14 +609,12 @@
     function ensureNotebookShape(nb){
       if (!nb || typeof nb !== "object") return null;
       if (!nb.pages || typeof nb.pages !== "object") return null;
-
       const ids = Object.keys(nb.pages);
       if (!ids.length) return null;
 
       for (const pid of ids){
         const p = nb.pages[pid];
         if (!p || typeof p !== "object") return null;
-
         p.id = pid;
         p.name = String(p.name || "Untitled");
         p.items = normalizeItems(p.items);
@@ -509,7 +637,7 @@
         const raw3 = localStorage.getItem(KEY_V3);
         if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-        // migrate v2 -> v3 (single list)
+        // migrate v2 -> v3
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
           const items = normalizeItems(JSON.parse(raw2));
@@ -525,7 +653,7 @@
           return nb;
         }
 
-        // migrate v1 -> v3 (older)
+        // migrate v1 -> v3
         const raw1 = localStorage.getItem(KEY_V1);
         if (raw1){
           const parsed1 = JSON.parse(raw1);
@@ -559,7 +687,6 @@
 
     function saveNotebook(){
       localStorage.setItem(KEY_V3, JSON.stringify(notebook));
-      updateArchiveCount();
       rebuildPageSelect();
       updateSortToggleLabel();
       status("Saved");
@@ -567,9 +694,7 @@
 
     function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-    // -----------------------------
     // Pages
-    // -----------------------------
     function rebuildPageSelect(){
       const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
       pageSelect.innerHTML = "";
@@ -580,7 +705,10 @@
         pageSelect.appendChild(opt);
       }
       pageSelect.value = notebook.activePageId;
-      btnDeletePage.disabled = Object.keys(notebook.pages).length <= 1;
+
+      const disableDel = Object.keys(notebook.pages).length <= 1;
+      btnDeletePage.disabled = disableDel;
+      btnDeletePageSide.disabled = disableDel;
     }
 
     function switchPage(pageId){
@@ -596,8 +724,7 @@
       if (!name) return;
       const id = uid();
       notebook.pages[id] = {
-        id,
-        name: name.trim(),
+        id, name: name.trim(),
         items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
         sortUndo: null
       };
@@ -633,34 +760,16 @@
       status("Page deleted");
     }
 
-    // -----------------------------
-    // View + Render
-    // -----------------------------
+    // View + render
     function setView(v){
-      view = v;
-      tabActive.classList.toggle("active", view === "active");
-      tabArchive.classList.toggle("active", view === "archive");
-
-      const inActive = (view === "active");
-      btnAdd.disabled = !inActive;
-      btnArchiveDone.style.display = inActive ? "" : "none";
-
-      btnRestoreFocused.style.display = inActive ? "none" : "";
-      btnDeleteFocused.style.display  = inActive ? "none" : "";
-      btnEmptyArchive.style.display   = (view === "archive") ? "" : "none";
-
-      updateSortToggleLabel();
+      view = v; // "active" | "archive"
       render(focusedId);
+      status(v === "active" ? "Active" : "Archive");
     }
 
     function visibleItems(){
       const items = currentPage().items;
       return items.filter(it => view === "active" ? !it.archived : it.archived);
-    }
-
-    function updateArchiveCount(){
-      const items = currentPage().items;
-      archCountEl.textContent = String(items.filter(x => x.archived).length);
     }
 
     function render(tryFocusId){
@@ -687,11 +796,7 @@
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.checked = !!it.done;
-        cb.addEventListener("change", () => {
-          it.done = cb.checked;
-          saveNotebook();
-          render(it.id);
-        });
+        cb.addEventListener("change", () => { it.done = cb.checked; saveNotebook(); render(it.id); });
         cellCheck.appendChild(cb);
 
         const cellText = document.createElement("div");
@@ -728,7 +833,6 @@
         grid.appendChild(row);
       });
 
-      updateArchiveCount();
       updateSortToggleLabel();
 
       if (tryFocusId){
@@ -737,20 +841,17 @@
           el.focus();
           const v = el.value;
           el.setSelectionRange(v.length, v.length);
-        } else {
-          const first = grid.querySelector(".row .task");
-          if (first) first.focus();
         }
       }
+    }
+
+    function getItemById(id){
+      return currentPage().items.find(x => x.id === id) || null;
     }
 
     function focusIndex(i){
       const el = grid.querySelector(`.row[data-index="${i}"] .task`);
       if (el) el.focus();
-    }
-
-    function getItemById(id){
-      return currentPage().items.find(x => x.id === id) || null;
     }
 
     function onKey(e, id){
@@ -777,6 +878,7 @@
         const newItem = { id: uid(), text:"", done:false, indent: it.indent, archived:false, archivedAt:null };
         const gi = p.items.findIndex(x => x.id === it.id);
         p.items.splice(gi + 1, 0, newItem);
+        p.sortUndo = null;
         saveNotebook();
         render(newItem.id);
         return;
@@ -785,6 +887,7 @@
       if (e.key === "Tab"){
         e.preventDefault();
         it.indent = e.shiftKey ? clamp(it.indent - 1, 0, MAX_INDENT) : clamp(it.indent + 1, 0, MAX_INDENT);
+        p.sortUndo = null;
         saveNotebook();
         render(it.id);
         return;
@@ -795,6 +898,7 @@
           e.preventDefault();
           const gi = p.items.findIndex(x => x.id === it.id);
           p.items.splice(gi, 1);
+          p.sortUndo = null;
           saveNotebook();
           const prevIdx = Math.max(0, idx - 1);
           const after = visibleItems()[prevIdx];
@@ -810,6 +914,7 @@
           focusIndex(Math.max(0, idx - 1));
         }
       }
+
       if (e.key === "ArrowDown"){
         const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
         if (atEnd || input.value.length === 0){
@@ -819,15 +924,25 @@
       }
     }
 
-    // -----------------------------
-    // Archive
-    // -----------------------------
+    // +Row (works in compact via FAB too)
+    function addRow(){
+      if (view !== "active") setView("active");
+      const p = currentPage();
+      p.items.push({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+      p.sortUndo = null;
+      saveNotebook();
+      focusedId = p.items[p.items.length - 1].id;
+      render(focusedId);
+    }
+
+    // Archive actions
     function archiveDone(){
       const p = currentPage();
       const toArchive = p.items.filter(x => !x.archived && x.done);
       if (!toArchive.length){ status("No done tasks"); return; }
       const now = Date.now();
       toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
+      p.sortUndo = null;
       saveNotebook();
       status(`Archived ${toArchive.length}`);
       render(focusedId);
@@ -836,7 +951,7 @@
     function restoreFocused(){
       if (!focusedId){ status("No focus"); return; }
       const it = getItemById(focusedId);
-      if (!it || !it.archived){ status("Focus an archived task"); return; }
+      if (!it || !it.archived){ status("Focus archived row"); return; }
       it.archived = false;
       it.archivedAt = null;
       saveNotebook();
@@ -848,11 +963,12 @@
       if (!focusedId){ status("No focus"); return; }
       const p = currentPage();
       const it = getItemById(focusedId);
-      if (!it || !it.archived){ status("Focus an archived task"); return; }
+      if (!it || !it.archived){ status("Focus archived row"); return; }
       p.items = p.items.filter(x => x.id !== it.id);
+      p.sortUndo = null;
       saveNotebook();
-      status("Deleted");
       focusedId = visibleItems()[0]?.id || null;
+      status("Deleted");
       render(focusedId);
     }
 
@@ -862,15 +978,14 @@
       if (!count){ status("Archive empty"); return; }
       if (!confirm(`Permanently delete ${count} archived item(s)?`)) return;
       p.items = p.items.filter(x => !x.archived);
+      p.sortUndo = null;
       saveNotebook();
       status("Archive emptied");
       focusedId = visibleItems()[0]?.id || null;
       render(focusedId);
     }
 
-    // -----------------------------
-    // Today page helpers + Ctrl+Alt+T shortcut
-    // -----------------------------
+    // Today helpers + Ctrl+Alt+T (always Active)
     function findTodayPageId(){
       for (const [pid, pg] of Object.entries(notebook.pages)){
         if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -895,11 +1010,10 @@
     function goToTodayPage(){
       const todayId = ensureTodayPage();
       switchPage(todayId);
-      setView("active");  // ✅ always Active tab
+      setView("active"); // always active
       status("Today");
     }
 
-    // ✅ Ctrl + Alt + T (Windows/Linux). (Mac users can use Cmd+Option+T if you want later)
     document.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
         e.preventDefault();
@@ -956,9 +1070,7 @@
       status(`Moved ${moving.length}`);
     }
 
-    // -----------------------------
     // Sort toggle (A→Z / Unsort)
-    // -----------------------------
     function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
 
     function blockify(list){
@@ -1025,9 +1137,7 @@
       status("Sorted");
     }
 
-    // -----------------------------
-    // Copy / Paste (block) – indent preserved
-    // -----------------------------
+    // Clipboard copy/paste (indent preserved)
     async function writeClipboard(text){
       try{
         await navigator.clipboard.writeText(text);
@@ -1154,9 +1264,7 @@
       status("Pasted");
     }
 
-    // -----------------------------
-    // Export / Import current page (JSON/TXT) + Backup/Restore ALL
-    // -----------------------------
+    // Export/Import current page + Backup/Restore ALL
     function downloadBlob(blob, filename){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -1173,6 +1281,7 @@
       const blob = new Blob([JSON.stringify(p.items, null, 2)], { type: "application/json" });
       downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.json`);
     }
+
     async function importJsonFile(f){
       const p = currentPage();
       const text = await f.text();
@@ -1227,7 +1336,6 @@
           done = (m[1].toLowerCase() === "x");
           textPart = m[2] ?? "";
         }
-
         out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
       }
 
@@ -1242,6 +1350,7 @@
       const blob = new Blob([toPlainText()], { type: "text/plain;charset=utf-8" });
       downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
     }
+
     async function importTxtFile(f){
       const p = currentPage();
       const text = await f.text();
@@ -1280,57 +1389,27 @@
       status("Restored ALL");
     }
 
-    // -----------------------------
-    // Wire up events
-    // -----------------------------
+    // Events
     uiToggleTitle.addEventListener("click", toggleUiMode);
-
-    tabActive.addEventListener("click", () => setView("active"));
-    tabArchive.addEventListener("click", () => setView("archive"));
 
     pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
     btnNewPage.addEventListener("click", newPage);
     btnRenamePage.addEventListener("click", renamePage);
     btnDeletePage.addEventListener("click", deletePage);
+    btnDeletePageSide.addEventListener("click", deletePage);
 
-    btnAdd.addEventListener("click", () => {
-      if (view !== "active") return;
-      const p = currentPage();
-      const newItem = { id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null };
-      p.items.push(newItem);
-      p.sortUndo = null;
-      saveNotebook();
-      focusedId = newItem.id;
-      render(newItem.id);
-    });
+    // +Row always visible in compact via FAB
+    btnAddSide.addEventListener("click", addRow);
+    btnAddFab.addEventListener("click", addRow);
 
-    btnArchiveDone.addEventListener("click", archiveDone);
-    btnRestoreFocused.addEventListener("click", restoreFocused);
-    btnDeleteFocused.addEventListener("click", deleteFocused);
-    btnEmptyArchive.addEventListener("click", emptyArchive);
+    // Sort
+    btnSortToggle.addEventListener("click", sortOrUnsortToggle);
 
+    // Clipboard
     btnCopyTasks.addEventListener("click", doCopy);
     btnPasteTasks.addEventListener("click", doPaste);
 
-    // Ctrl/Cmd+Shift+C/V inside task input
-    document.addEventListener("keydown", (e) => {
-      const isMac = navigator.platform.toUpperCase().includes("MAC");
-      const mod = isMac ? e.metaKey : e.ctrlKey;
-      const el = document.activeElement;
-      const inTask = el && el.classList && el.classList.contains("task");
-      if (!mod || !e.shiftKey || !inTask) return;
-
-      if (e.key.toLowerCase() === "c"){
-        if (el.selectionStart !== el.selectionEnd) return;
-        e.preventDefault();
-        doCopy();
-      }
-      if (e.key.toLowerCase() === "v"){
-        e.preventDefault();
-        doPaste();
-      }
-    });
-
+    // Backup group
     btnExportJson.addEventListener("click", exportJson);
     btnImportJson.addEventListener("click", () => fileJson.click());
     fileJson.addEventListener("change", async () => {
@@ -1361,16 +1440,49 @@
       finally{ fileAll.value = ""; }
     });
 
-    btnSortToggle.addEventListener("click", sortOrUnsortToggle);
+    // Archive actions
+    btnArchiveDone.addEventListener("click", archiveDone);
+    btnRestoreFocused.addEventListener("click", restoreFocused);
+    btnDeleteFocused.addEventListener("click", deleteFocused);
+    btnEmptyArchive.addEventListener("click", emptyArchive);
 
-    // -----------------------------
+    // View group
+    tabActiveSide.addEventListener("click", () => setView("active"));
+    tabArchiveSide.addEventListener("click", () => setView("archive"));
+
+    // Ctrl+Alt+T => Today (always Active)
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
+        e.preventDefault();
+        goToTodayPage();
+      }
+    });
+
+    // Ctrl/Cmd+Shift+C/V for copy/paste when inside task input
+    document.addEventListener("keydown", (e) => {
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      const el = document.activeElement;
+      const inTask = el && el.classList && el.classList.contains("task");
+      if (!mod || !e.shiftKey || !inTask) return;
+
+      if (e.key.toLowerCase() === "c"){
+        if (el.selectionStart !== el.selectionEnd) return;
+        e.preventDefault();
+        doCopy();
+      }
+      if (e.key.toLowerCase() === "v"){
+        e.preventDefault();
+        doPaste();
+      }
+    });
+
     // Init
-    // -----------------------------
     rebuildPageSelect();
     focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
     setView("active");
     updateSortToggleLabel();
-
+    status("");
   })();
   </script>
 </body>
