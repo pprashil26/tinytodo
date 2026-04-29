@@ -1,438 +1,396 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tiny Todo</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tiny Todo</title>
 
-<style>
-  :root{
-    --paper:#fcfbf7;
-    --paper-edge:#efece3;
-    --paper-line: rgba(40, 60, 90, 0.08);
-
-    --text:#111;
-    --muted:#7a7a7a;
-
-    --row-h: 22px;
-    --font: 13px;
-    --pad-x: 4px;
-
-    --check-col: 28px;
-    --move-col: 34px;
-    --indent-step: 16px;
-    --max-indent: 6;
-
-    --a6w: 105mm;
-    --sidebar-w: 175px;
-    --gap: 12px;
-  }
-
-  *{ box-sizing:border-box; }
-  html, body{ height:100%; }
-  html{ -webkit-text-size-adjust: 100%; }
-
-  body{
-    margin:0;
-    color:var(--text);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    font-size: var(--font);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background:
-      radial-gradient(1200px 600px at 50% -200px, rgba(0,0,0,0.05), transparent 55%),
-      #f4f4f4;
-  }
-
-  /* ---------- Minimal action buttons ---------- */
-  button{
-    font: inherit;
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    color: var(--muted);
-    cursor: pointer;
-    line-height: 1.1;
-  }
-  button:hover{ color:#111; }
-  button:active{ transform: translateY(1px); }
-  button:disabled{ opacity:.45; cursor: default; transform:none; }
-
-  /* ---------- Header ---------- */
-  header{
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: rgba(244,244,244,0.9);
-    backdrop-filter: blur(6px);
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-  }
-
-  .header-inner{
-    width: 100%;
-    max-width: calc(var(--a6w) + var(--sidebar-w) + var(--gap) + 16px);
-    margin: 0 auto;
-    padding: 6px 8px;
-    display:flex;
-    align-items:center;
-    gap:10px;
-    flex-wrap: wrap;
-  }
-
-  /* Title placed near dropdown (as requested) */
-  .title{
-    font-weight: 600;
-    cursor: pointer; /* toggle compact */
-    user-select: none;
-    white-space: nowrap;
-  }
-
-  select.page-select{
-    border: 1px solid rgba(0,0,0,0.12);
-    border-radius: 999px;
-    padding: 2px 8px;
-    background: rgba(255,255,255,0.85);
-    font: inherit;
-    color: var(--text);
-    outline: none;
-    height: 26px;
-  }
-
-  /* Header buttons are minimal text already via button style */
-  .header-actions{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    flex-wrap: wrap;
-  }
-
-  /* ---------- Layout ---------- */
-  .wrap{
-    width:100%;
-    max-width: calc(var(--a6w) + var(--sidebar-w) + var(--gap) + 16px);
-    margin: 0 auto;
-    padding: 10px 8px 18px;
-    display:flex;
-    gap: var(--gap);
-    align-items:flex-start;
-  }
-
-  .sidebar{
-    width: var(--sidebar-w);
-    flex: 0 0 var(--sidebar-w);
-    position: sticky;
-    top: 56px; /* below header */
-    align-self:flex-start;
-  }
-
-  .main{
-    width:100%;
-    max-width: var(--a6w);
-  }
-
-  /* ---------- Paper grid ---------- */
-  .paper{
-    border: 1px solid rgba(0,0,0,0.10);
-    border-radius: 14px;
-    overflow: hidden;
-    background: var(--paper);
-    box-shadow:
-      0 10px 24px rgba(0,0,0,0.08),
-      0 2px 6px rgba(0,0,0,0.06);
-  }
-
-  .grid{
-    position: relative;
-    background:
-      linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.0) 24px),
-      linear-gradient(to right,
-        transparent 0,
-        transparent calc(var(--check-col) - 1px),
-        rgba(40,60,90,0.10) calc(var(--check-col) - 1px),
-        transparent var(--check-col)
-      ),
-      repeating-linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent calc(var(--row-h) - 1px),
-        var(--paper-line) calc(var(--row-h) - 1px),
-        var(--paper-line) var(--row-h)
-      );
-  }
-
-  .row{
-    display:grid;
-    grid-template-columns: var(--check-col) 1fr var(--move-col);
-    align-items:center;
-    min-height: var(--row-h);
-  }
-
-  .cell{
-    padding: 0 var(--pad-x);
-    height: var(--row-h);
-    display:flex;
-    align-items:center;
-    min-width:0;
-  }
-
-  .cell.check{
-    justify-content:center;
-    border-right: 1px solid rgba(40,60,90,0.08);
-  }
-
-  .cell.text{
-    padding-left: calc(var(--pad-x) + (var(--indentLevel) * var(--indent-step)));
-  }
-
-  .cell.move{
-    justify-content:center;
-    border-left: 1px solid rgba(40,60,90,0.06);
-  }
-
-  input[type="checkbox"]{
-    width: 14px;
-    height: 14px;
-    margin:0;
-    accent-color:#222;
-  }
-
-  .task{
-    width:100%;
-    height: calc(var(--row-h) - 2px);
-    border:none;
-    outline:none;
-    background: transparent;
-    font: inherit;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .done .task{
-    text-decoration: line-through;
-    color:#777;
-  }
-  .archivedRow .task{
-    color:#666;
-  }
-
-  .today-btn{
-    border: 1px solid rgba(0,0,0,0.10);
-    border-radius: 999px;
-    background: rgba(255,255,255,0.65);
-    padding: 0 7px;
-    height: 20px;
-    color: #666;
-    cursor: pointer;
-  }
-  .today-btn:hover{ color:#111; }
-  .today-btn:disabled{
-    opacity: 0.35;
-    cursor: default;
-  }
-
-  /* ---------- Sidebar (chevrons) ---------- */
-  .side-block{
-    border: 1px solid rgba(0,0,0,0.08);
-    border-radius: 12px;
-    background: rgba(255,255,255,0.55);
-    padding: 8px;
-  }
-
-  details.group{
-    border-top: 1px solid rgba(0,0,0,0.08);
-    padding-top: 8px;
-    margin-top: 8px;
-  }
-  details.group:first-child{
-    border-top:none;
-    padding-top:0;
-    margin-top:0;
-  }
-
-  summary{
-    list-style:none;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content: space-between;
-    user-select:none;
-    color:#555;
-    font-weight:600;
-  }
-  summary::-webkit-details-marker{ display:none; }
-  summary::after{
-    content:"›";
-    transform: rotate(90deg);
-    opacity:.65;
-  }
-  details[open] summary::after{
-    transform: rotate(-90deg);
-  }
-
-  .group-body{
-    margin-top: 8px;
-    display:flex;
-    flex-direction:column;
-    gap: 8px;
-  }
-
-  /* ---------- Bottom actions on page (always visible) ---------- */
-  .bottom-actions{
-    display:flex;
-    justify-content: space-between;
-    align-items:center;
-    margin-top: 10px;
-    padding: 0 2px;
-    font-size: 12px;
-  }
-
-  /* ---------- Toast (optional tiny feedback) ---------- */
-  #toast{
-    position: fixed;
-    left: 50%;
-    bottom: 12px;
-    transform: translateX(-50%);
-    background: rgba(255,255,255,0.92);
-    border: 1px solid rgba(0,0,0,0.12);
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
-    color: #222;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.10);
-    display: none;
-    z-index: 30;
-    max-width: 90vw;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* ---------- Compact mode ---------- */
-  body.compact .sidebar{ display:none; }
-  body.compact .wrap{
-    display:block;
-    max-width: var(--a6w);
-  }
-  body.compact .main{
-    margin: 0 auto;
-    max-width: var(--a6w);
-  }
-
-  /* iOS zoom prevention */
-  @media (max-width: 520px){
+  <style>
     :root{
-      --row-h: 28px;
-      --font: 15px;
-      --pad-x: 6px;
-      --check-col: 34px;
-      --move-col: 44px;
-      --indent-step: 18px;
-      --sidebar-w: 180px;
+      --paper:#fcfbf7;
+      --paper-edge:#efece3;
+      --paper-line: rgba(40, 60, 90, 0.08);
+
+      --text:#111;
+      --muted: rgba(0,0,0,0.45);
+
+      --row-h: 22px;
+      --font: 13px;
+      --pad-x: 4px;
+
+      --check-col: 28px;
+      --act-col: 62px; /* ⧉ ⎘ → */
+      --indent-step: 16px;
+      --max-indent: 6;
+
+      --a6w: 105mm;
+      --sidebar-w: 175px;
+      --gap: 12px;
     }
-    .task{ font-size:16px; }
-    input[type="checkbox"]{ width:16px; height:16px; }
-    .today-btn{ height: 24px; padding: 0 9px; }
-  }
-</style>
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    html{ -webkit-text-size-adjust: 100%; }
+
+    body{
+      margin:0;
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-size: var(--font);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background:
+        radial-gradient(1200px 600px at 50% -200px, rgba(0,0,0,0.05), transparent 55%),
+        #f4f4f4;
+    }
+
+    /* Minimal action buttons */
+    button{
+      font: inherit;
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: var(--muted);
+      cursor: pointer;
+      line-height: 1.1;
+    }
+    button:hover{ color: rgba(0,0,0,0.85); }
+    button:active{ transform: translateY(1px); }
+    button:disabled{ opacity:.35; cursor: default; transform:none; }
+
+    /* Hard hide file inputs (prevents "Choose File") */
+    input[type="file"]{ display:none !important; }
+
+    /* ---------- Header (centered on A6 width) ---------- */
+    header{
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(244,244,244,0.9);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .header-inner{
+      width: 100%;
+      max-width: var(--a6w);
+      margin: 0 auto;
+      padding: 6px 8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      flex-wrap: nowrap;
+    }
+    .title{
+      font-weight: 600;
+      cursor: pointer; /* toggle compact */
+      user-select: none;
+      white-space: nowrap;
+      color: rgba(0,0,0,0.65);
+    }
+    select.page-select{
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: rgba(255,255,255,0.85);
+      font: inherit;
+      color: rgba(0,0,0,0.70);
+      outline: none;
+      height: 26px;
+      max-width: 170px;
+    }
+
+    /* ---------- Layout ---------- */
+    .wrap{
+      width:100%;
+      max-width: calc(var(--a6w) + var(--sidebar-w) + var(--gap));
+      margin: 0 auto;
+      padding: 10px 8px 18px;
+      display:flex;
+      gap: var(--gap);
+      align-items:flex-start;
+      justify-content:center;
+    }
+    .sidebar{
+      width: var(--sidebar-w);
+      flex: 0 0 var(--sidebar-w);
+      position: sticky;
+      top: 56px;
+      align-self:flex-start;
+    }
+    .main{
+      width:100%;
+      max-width: var(--a6w);
+    }
+
+    /* ---------- Paper/grid ---------- */
+    .paper{
+      border: 1px solid rgba(0,0,0,0.10);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--paper);
+      box-shadow:
+        0 10px 24px rgba(0,0,0,0.08),
+        0 2px 6px rgba(0,0,0,0.06);
+    }
+    .grid{
+      position: relative;
+      background:
+        linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.0) 24px),
+        linear-gradient(to right,
+          transparent 0,
+          transparent calc(var(--check-col) - 1px),
+          rgba(40,60,90,0.10) calc(var(--check-col) - 1px),
+          transparent var(--check-col)
+        ),
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent calc(var(--row-h) - 1px),
+          var(--paper-line) calc(var(--row-h) - 1px),
+          var(--paper-line) var(--row-h)
+        );
+    }
+    .row{
+      display:grid;
+      grid-template-columns: var(--check-col) 1fr var(--act-col);
+      align-items:center;
+      min-height: var(--row-h);
+    }
+    .cell{
+      padding: 0 var(--pad-x);
+      height: var(--row-h);
+      display:flex;
+      align-items:center;
+      min-width:0;
+    }
+    .cell.check{
+      justify-content:center;
+      border-right: 1px solid rgba(40,60,90,0.08);
+    }
+    .cell.text{
+      padding-left: calc(var(--pad-x) + (var(--indentLevel) * var(--indent-step)));
+    }
+    .cell.act{
+      justify-content:flex-end;
+      gap: 4px;
+      border-left: 1px solid rgba(40,60,90,0.06);
+      padding-right: 6px;
+    }
+
+    input[type="checkbox"]{
+      width: 14px;
+      height: 14px;
+      margin:0;
+      accent-color:#222;
+    }
+    .task{
+      width:100%;
+      height: calc(var(--row-h) - 2px);
+      border:none;
+      outline:none;
+      background: transparent;
+      font: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .done .task{ text-decoration: line-through; color:#777; }
+    .archivedRow .task{ color:#666; }
+
+    /* Per-row action buttons */
+    .mini-act{
+      font-size: 12px;
+      color: rgba(0,0,0,0.42);
+      line-height: 1;
+      padding: 0 1px;
+    }
+    .mini-act:hover{ color: rgba(0,0,0,0.85); }
+    .mini-act:disabled{ opacity: .25; }
+
+    /* ---------- Sidebar (chevrons) ---------- */
+    .side-block{
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.55);
+      padding: 8px;
+    }
+    details.group{
+      border-top: 1px solid rgba(0,0,0,0.08);
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+    details.group:first-child{
+      border-top:none;
+      padding-top:0;
+      margin-top:0;
+    }
+    summary{
+      list-style:none;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      user-select:none;
+      color:#555;
+      font-weight:600;
+    }
+    summary::-webkit-details-marker{ display:none; }
+    summary::after{
+      content:"›";
+      transform: rotate(90deg);
+      opacity:.65;
+    }
+    details[open] summary::after{ transform: rotate(-90deg); }
+    .group-body{
+      margin-top: 8px;
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+    }
+
+    /* ---------- Bottom actions: together and always visible ---------- */
+    .bottom-actions{
+      display:flex;
+      justify-content:center;
+      gap: 14px;
+      align-items:center;
+      margin-top: 10px;
+      padding: 0 2px;
+      font-size: 12px;
+    }
+
+    /* ---------- Toast ---------- */
+    #toast{
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #222;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.10);
+      display: none;
+      z-index: 30;
+      max-width: 90vw;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ---------- Compact mode ---------- */
+    body.compact .sidebar{ display:none; }
+    body.compact .wrap{
+      display:block;
+      max-width: var(--a6w);
+    }
+    body.compact .main{
+      margin: 0 auto;
+      max-width: var(--a6w);
+    }
+    /* In compact mode hide copy/paste (only → visible) */
+    body.compact .mini-copy,
+    body.compact .mini-paste{ display:none !important; }
+
+    /* iOS zoom prevention */
+    @media (max-width: 520px){
+      :root{
+        --row-h: 28px;
+        --font: 15px;
+        --pad-x: 6px;
+        --check-col: 34px;
+        --act-col: 72px;
+        --indent-step: 18px;
+        --sidebar-w: 180px;
+      }
+      .task{ font-size:16px; }
+      .header-inner{ gap: 8px; }
+    }
+  </style>
 </head>
 
 <body>
-  <header>
-    <div class="header-inner">
-      <span class="title" id="toggleUi" title="Tap to hide/show sidebar">Tiny Todo</span>
-
-      <select class="page-select" id="pageSelect" title="Pages"></select>
-
-      <div class="header-actions">
-        <button type="button" id="newPage">+ Page</button>
-        <button type="button" id="renamePage">Rename</button>
-      </div>
-    </div>
-  </header>
-
-  <div id="toast"></div>
-
-  <div class="wrap">
-    <!-- Sidebar (only in non-compact) -->
-    <aside class="sidebar">
-      <div class="side-block">
-
-        <details class="group">
-          <summary>Clipboard</summary>
-          <div class="group-body">
-            <button type="button" id="copyBtn">Copy</button>
-            <button type="button" id="pasteBtn">Paste</button>
-          </div>
-        </details>
-
-        <details class="group">
-          <summary>Backup</summary>
-          <div class="group-body">
-            <button type="button" id="exportJsonBtn">Export JSON</button>
-            <button type="button" id="importJsonBtn">Import JSON</button>
-            <button type="button" id="exportTxtBtn">Export TXT</button>
-            <button type="button" id="importTxtBtn">Import TXT</button>
-            <button type="button" id="backupAllBtn">Backup ALL</button>
-            <button type="button" id="restoreAllBtn">Restore ALL</button>
-          </div>
-        </details>
-
-        <details class="group">
-          <summary>Archive</summary>
-          <div class="group-body">
-            <button type="button" id="archiveDoneBtn">Archive done</button>
-            <button type="button" id="restoreFocusedBtn">Restore focused</button>
-            <button type="button" id="deleteFocusedBtn">Delete focused</button>
-            <button type="button" id="emptyArchiveBtn">Empty archive</button>
-          </div>
-        </details>
-
-        <details class="group">
-          <summary>Page / View</summary>
-          <div class="group-body">
-            <button type="button" id="viewActiveBtn">Active</button>
-            <button type="button" id="viewArchiveBtn">Archive</button>
-            <button type="button" id="deletePageBtn">Delete Page</button>
-          </div>
-        </details>
-
-        <div style="margin-top:10px;color:var(--muted);font-size:12px" id="status"></div>
-      </div>
-    </aside>
-
-    <!-- Main -->
-    <main class="main">
-      <div class="paper">
-        <div class="grid" id="grid" aria-label="todo grid"></div>
-      </div>
-
-      <!-- Bottom +Row + Sort (always visible even in compact mode) -->
-      <div class="bottom-actions">
-        <button type="button" id="addRowBtn">+ Row</button>
-        <button type="button" id="sortBtn">Sort A→Z</button>
-      </div>
-
-      <!-- Hidden file inputs + clipboard fallback -->
-      <input class="file" id="fileJson" type="file" accept="application/json">
-      <input class="file" id="fileTxt" type="file" accept="text/plain,.txt">
-      <input class="file" id="fileAll" type="file" accept="application/json">
-      <textarea id="clipFallback" aria-hidden="true"
-        style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
-    </main>
+<header>
+  <div class="header-inner">
+    <span class="title" id="toggleUi" title="Tap to hide/show sidebar">Tiny Todo</span>
+    <select class="page-select" id="pageSelect" title="Pages"></select>
+    <button type="button" id="newPage">+ Page</button>
+    <button type="button" id="renamePage">Rename</button>
   </div>
+</header>
+
+<div id="toast"></div>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <div class="side-block">
+
+      <details class="group">
+        <summary>Backup</summary>
+        <div class="group-body">
+          <button type="button" id="exportJsonBtn">Export JSON</button>
+          <button type="button" id="importJsonBtn">Import JSON</button>
+          <button type="button" id="exportTxtBtn">Export TXT</button>
+          <button type="button" id="importTxtBtn">Import TXT</button>
+          <button type="button" id="backupAllBtn">Backup ALL</button>
+          <button type="button" id="restoreAllBtn">Restore ALL</button>
+        </div>
+      </details>
+
+      <details class="group">
+        <summary>Archive</summary>
+        <div class="group-body">
+          <button type="button" id="archiveDoneBtn">Archive done</button>
+          <button type="button" id="restoreFocusedBtn">Restore focused</button>
+          <button type="button" id="deleteFocusedBtn">Delete focused</button>
+          <button type="button" id="emptyArchiveBtn">Empty archive</button>
+        </div>
+      </details>
+
+      <details class="group">
+        <summary>Page / View</summary>
+        <div class="group-body">
+          <button type="button" id="viewActiveBtn">Active</button>
+          <button type="button" id="viewArchiveBtn">Archive</button>
+          <button type="button" id="deletePageBtn">Delete Page</button>
+        </div>
+      </details>
+
+      <div style="margin-top:10px;color:var(--muted);font-size:12px" id="status"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="paper">
+      <div class="grid" id="grid" aria-label="todo grid"></div>
+    </div>
+
+    <div class="bottom-actions">
+      <button type="button" id="addRowBtn">+ Row</button>
+      <button type="button" id="sortBtn">Sort A→Z</button>
+    </div>
+
+    <!-- hidden inputs + clipboard fallback -->
+    <input id="fileJson" type="file" accept="application/json">
+    <input id="fileTxt" type="file" accept="text/plain,.txt">
+    <input id="fileAll" type="file" accept="application/json">
+    <textarea id="clipFallback" aria-hidden="true"
+      style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
+  </main>
+</div>
 
 <script>
 (() => {
-  // Keys
   const KEY_V3 = "tiny_todo_v3_pages";
   const KEY_V2 = "tiny_todo_v2";
   const KEY_V1 = "tiny_todo_v1";
   const UI_KEY = "tiny_todo_ui_compact";
   const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
-  // DOM
   const body = document.body;
   const toggleUi = document.getElementById("toggleUi");
   const toastEl = document.getElementById("toast");
@@ -443,10 +401,8 @@
   const renamePageBtn = document.getElementById("renamePage");
 
   const grid = document.getElementById("grid");
-
-  // Sidebar buttons
-  const copyBtn = document.getElementById("copyBtn");
-  const pasteBtn = document.getElementById("pasteBtn");
+  const addRowBtn = document.getElementById("addRowBtn");
+  const sortBtn = document.getElementById("sortBtn");
 
   const exportJsonBtn = document.getElementById("exportJsonBtn");
   const importJsonBtn = document.getElementById("importJsonBtn");
@@ -464,22 +420,14 @@
   const viewArchiveBtn = document.getElementById("viewArchiveBtn");
   const deletePageBtn = document.getElementById("deletePageBtn");
 
-  // Bottom buttons
-  const addRowBtn = document.getElementById("addRowBtn");
-  const sortBtn = document.getElementById("sortBtn");
-
-  // Hidden inputs
   const fileJson = document.getElementById("fileJson");
   const fileTxt = document.getElementById("fileTxt");
   const fileAll = document.getElementById("fileAll");
   const clipFallback = document.getElementById("clipFallback");
 
-  // UI compact
+  // UI compact toggle
   let uiCompact = (localStorage.getItem(UI_KEY) === "1");
-  function applyUiMode(){
-    body.classList.toggle("compact", uiCompact);
-    toggleUi.title = uiCompact ? "Tap to show sidebar" : "Tap to hide sidebar";
-  }
+  function applyUiMode(){ body.classList.toggle("compact", uiCompact); }
   function toggleUiMode(){
     uiCompact = !uiCompact;
     localStorage.setItem(UI_KEY, uiCompact ? "1" : "0");
@@ -489,10 +437,9 @@
 
   // App state
   let notebook = loadNotebook() || seedNotebook();
-  let view = "active";  // "active" | "archive"
+  let view = "active";   // "active" | "archive"
   let focusedId = null;
 
-  // Helpers
   function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
   function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
@@ -514,6 +461,10 @@
     }, 900);
   }
 
+  // ---------- Data model ----------
+  // notebook = { version, activePageId, pages: { [pageId]: { id, name, items:[], sortUndo } } }
+  // item = { id, text, done, indent, archived, archivedAt }
+
   function seedItems(){
     return [
       { id: uid(), text: "Task", done:false, indent:0, archived:false, archivedAt:null },
@@ -527,7 +478,7 @@
       version: 1,
       activePageId: pid,
       pages: {
-        { id: pid, name: "Personal", items: seedItems(), sortUndo: null }
+        [pid]: { id: pid, name: "Personal", items: seedItems(), sortUndo: null }
       }
     };
   }
@@ -554,11 +505,13 @@
     for (const pid of ids){
       const p = nb.pages[pid];
       if (!p || typeof p !== "object") return null;
+
       p.id = pid;
       p.name = String(p.name || "Untitled");
       p.items = normalizeItems(p.items);
       if (!("sortUndo" in p)) p.sortUndo = null;
 
+      // ensure at least one active row
       if (p.items.filter(x => !x.archived).length === 0){
         p.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
       }
@@ -576,6 +529,7 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
+      // migrate v2 -> v3 (single list)
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -583,12 +537,15 @@
         const nb = ensureNotebookShape({
           version: 1,
           activePageId: pid,
-          pages: { { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null } }
+          pages: {
+            [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null }
+          }
         });
         localStorage.setItem(KEY_V3, JSON.stringify(nb));
         return nb;
       }
 
+      // migrate v1 -> v3 (older array)
       const raw1 = localStorage.getItem(KEY_V1);
       if (raw1){
         const parsed1 = JSON.parse(raw1);
@@ -598,19 +555,22 @@
             text: String(x.text || ""),
             done: !!x.done,
             indent: clamp(Number(x.indent || 0), 0, MAX_INDENT),
-            archived: false,
-            archivedAt: null
+            archived:false,
+            archivedAt:null
           }));
           const pid = uid();
           const nb = ensureNotebookShape({
             version: 1,
             activePageId: pid,
-            pages: { { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null } }
+            pages: {
+              [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null }
+            }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
           return nb;
         }
       }
+
       return null;
     }catch(e){
       return null;
@@ -625,9 +585,9 @@
 
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-  // Pages
+  // ---------- Pages ----------
   function rebuildPageSelect(){
-    const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
+    const pages = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
     pageSelect.innerHTML = "";
     for (const p of pages){
       const opt = document.createElement("option");
@@ -636,9 +596,7 @@
       pageSelect.appendChild(opt);
     }
     pageSelect.value = notebook.activePageId;
-
-    const disableDel = Object.keys(notebook.pages).length <= 1;
-    deletePageBtn.disabled = disableDel;
+    deletePageBtn.disabled = Object.keys(notebook.pages).length <= 1;
   }
 
   function switchPage(pageId){
@@ -654,8 +612,7 @@
     if (!name) return;
     const id = uid();
     notebook.pages[id] = {
-      id,
-      name: name.trim(),
+      id, name: name.trim(),
       items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
       sortUndo: null
     };
@@ -691,7 +648,7 @@
     toast("Page deleted");
   }
 
-  // View
+  // ---------- View ----------
   function setView(v){
     view = v;
     render(focusedId);
@@ -703,7 +660,16 @@
     return items.filter(it => view === "active" ? !it.archived : it.archived);
   }
 
-  // Render
+  // ---------- Render ----------
+  function getItemById(id){
+    return currentPage().items.find(x => x.id === id) || null;
+  }
+
+  function focusIndex(i){
+    const el = grid.querySelector(`.row[data-index="${i}"] .task`);
+    if (el) el.focus();
+  }
+
   function render(tryFocusId){
     const p = currentPage();
     grid.innerHTML = "";
@@ -729,11 +695,7 @@
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = !!it.done;
-      cb.addEventListener("change", () => {
-        it.done = cb.checked;
-        saveNotebook();
-        render(it.id);
-      });
+      cb.addEventListener("change", () => { it.done = cb.checked; saveNotebook(); render(it.id); });
       cellCheck.appendChild(cb);
 
       const cellText = document.createElement("div");
@@ -751,22 +713,37 @@
       input.addEventListener("keydown", (e) => onKey(e, it.id));
       cellText.appendChild(input);
 
-      const cellMove = document.createElement("div");
-      cellMove.className = "cell move";
-      const moveBtn = document.createElement("button");
-      moveBtn.className = "today-btn";
-      moveBtn.textContent = "→";
-      moveBtn.title = "Move to Today";
-      moveBtn.setAttribute("aria-label", "Move to Today");
+      const cellAct = document.createElement("div");
+      cellAct.className = "cell act";
 
-      const canMove = (view === "active") && !isTodayPage;
-      moveBtn.disabled = !canMove;
-      moveBtn.addEventListener("click", () => { if (canMove) moveBlockToToday(it.id); });
-      cellMove.appendChild(moveBtn);
+      const copyMini = document.createElement("button");
+      copyMini.className = "mini-act mini-copy";
+      copyMini.textContent = "⧉";
+      copyMini.title = "Copy block";
+      copyMini.disabled = (view !== "active");
+      copyMini.addEventListener("click", () => doCopyById(it.id));
+
+      const pasteMini = document.createElement("button");
+      pasteMini.className = "mini-act mini-paste";
+      pasteMini.textContent = "⎘";
+      pasteMini.title = "Paste below block";
+      pasteMini.disabled = (view !== "active");
+      pasteMini.addEventListener("click", () => doPasteBelowId(it.id));
+
+      const moveMini = document.createElement("button");
+      moveMini.className = "mini-act";
+      moveMini.textContent = "→";
+      moveMini.title = "Move to Today";
+      moveMini.disabled = !(view === "active" && !isTodayPage);
+      moveMini.addEventListener("click", () => { if (!moveMini.disabled) moveBlockToToday(it.id); });
+
+      cellAct.appendChild(copyMini);
+      cellAct.appendChild(pasteMini);
+      cellAct.appendChild(moveMini);
 
       row.appendChild(cellCheck);
       row.appendChild(cellText);
-      row.appendChild(cellMove);
+      row.appendChild(cellAct);
       grid.appendChild(row);
     });
 
@@ -782,16 +759,7 @@
     }
   }
 
-  function getItemById(id){
-    return currentPage().items.find(x => x.id === id) || null;
-  }
-
-  function focusIndex(i){
-    const el = grid.querySelector(`.row[data-index="${i}"] .task`);
-    if (el) el.focus();
-  }
-
-  // Keyboard within task input
+  // ---------- Task key handling ----------
   function onKey(e, id){
     const p = currentPage();
     const it = getItemById(id);
@@ -802,7 +770,6 @@
     const input = e.target;
     const canAddRows = (view === "active");
 
-    // Ctrl/Cmd+Enter toggle done
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
       e.preventDefault();
       it.done = !it.done;
@@ -811,7 +778,6 @@
       return;
     }
 
-    // Enter new row
     if (e.key === "Enter"){
       if (!canAddRows) return;
       e.preventDefault();
@@ -824,7 +790,6 @@
       return;
     }
 
-    // Tab indent/outdent
     if (e.key === "Tab"){
       e.preventDefault();
       it.indent = e.shiftKey ? clamp(it.indent - 1, 0, MAX_INDENT) : clamp(it.indent + 1, 0, MAX_INDENT);
@@ -834,7 +799,6 @@
       return;
     }
 
-    // Backspace delete empty row (if more than 1 visible)
     if (e.key === "Backspace"){
       if (input.value === "" && list.length > 1){
         e.preventDefault();
@@ -849,7 +813,6 @@
       }
     }
 
-    // Up/Down navigate
     if (e.key === "ArrowUp"){
       const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
       if (atStart || input.value.length === 0){
@@ -866,18 +829,25 @@
     }
   }
 
-  // +Row (always visible)
+  // ---------- +Row ----------
   function addRow(){
     if (view !== "active") setView("active");
     const p = currentPage();
-    p.items.push({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+
+    // insert at end of active section (before archived)
+    let insertIndex = p.items.findIndex(x => x.archived);
+    if (insertIndex < 0) insertIndex = p.items.length;
+
+    const newItem = { id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null };
+    p.items.splice(insertIndex, 0, newItem);
+
     p.sortUndo = null;
     saveNotebook();
-    focusedId = p.items[p.items.length - 1].id;
+    focusedId = newItem.id;
     render(focusedId);
   }
 
-  // Archive actions
+  // ---------- Archive actions ----------
   function archiveDone(){
     const p = currentPage();
     const toArchive = p.items.filter(x => !x.archived && x.done);
@@ -927,7 +897,7 @@
     render(focusedId);
   }
 
-  // Today + Ctrl+Alt+T (always active)
+  // ---------- Today + shortcut ----------
   function findTodayPageId(){
     for (const [pid, pg] of Object.entries(notebook.pages)){
       if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -938,7 +908,6 @@
   function ensureTodayPage(){
     let pid = findTodayPageId();
     if (pid && notebook.pages[pid]) return pid;
-
     pid = uid();
     notebook.pages[pid] = {
       id: pid,
@@ -956,6 +925,7 @@
     toast("Today");
   }
 
+  // Ctrl+Alt+T
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
       e.preventDefault();
@@ -963,7 +933,7 @@
     }
   });
 
-  // Move block to Today (append bottom)
+  // ---------- Move block to Today ----------
   function getVisibleBlock(list, startId){
     const startIdx = list.findIndex(x => x.id === startId);
     if (startIdx < 0) return { ids: [], nextFocusId: null };
@@ -980,7 +950,6 @@
   }
 
   function insertIntoActiveSection(itemsArr, newItems){
-    // Insert before first archived item
     let idx = itemsArr.findIndex(x => x.archived);
     if (idx < 0) idx = itemsArr.length;
     itemsArr.splice(idx, 0, ...newItems);
@@ -1007,10 +976,8 @@
       return true;
     });
 
-    // Append to bottom of Today ACTIVE section (before archived)
     insertIntoActiveSection(today.items, moving);
 
-    // Ensure source has at least one active row
     if (source.items.filter(x => !x.archived).length === 0){
       source.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
     }
@@ -1021,9 +988,8 @@
     toast(`Moved ${moving.length}`);
   }
 
-  // Sort toggle (block-safe) with unsort snapshot
+  // ---------- Sort toggle (block-safe) ----------
   function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
-
   function blockify(list){
     const blocks = [];
     let current = null;
@@ -1048,7 +1014,6 @@
   function sortOrUnsort(){
     const p = currentPage();
 
-    // Unsort
     if (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
       const snapshot = p.sortUndo.ids.slice();
       const byId = new Map(p.items.map(x => [x.id, x]));
@@ -1070,7 +1035,6 @@
       return;
     }
 
-    // Save snapshot
     p.sortUndo = { ids: p.items.map(x => x.id), savedAt: Date.now() };
 
     const active = p.items.filter(x => !x.archived);
@@ -1082,14 +1046,13 @@
     const sortedTarget = blocks.flatMap(b => b.items);
 
     p.items = (view === "active") ? [...sortedTarget, ...archived] : [...active, ...sortedTarget];
-
     saveNotebook();
     focusedId = sortedTarget[0]?.id || null;
     render(focusedId);
     toast("Sorted");
   }
 
-  // Copy/Paste block (indent preserved)
+  // ---------- Copy/Paste per row ----------
   async function writeClipboard(text){
     try{
       await navigator.clipboard.writeText(text);
@@ -1167,28 +1130,25 @@
     return out;
   }
 
-  function insertItemsBelowFocused(newItems){
+  function insertItemsBelowId(anchorId, newItems){
     if (!newItems.length) return;
     const p = currentPage();
 
-    // default: insert at end of active section
     let insertIndex = p.items.findIndex(x => x.archived);
     if (insertIndex < 0) insertIndex = p.items.length;
 
-    if (focusedId){
-      const gi = p.items.findIndex(x => x.id === focusedId);
-      if (gi >= 0 && !p.items[gi].archived){
-        const startIndent = Number(p.items[gi].indent || 0);
-        let end = gi + 1;
-        while (end < p.items.length){
-          const next = p.items[end];
-          if (next.archived) break;
-          const ind = Number(next.indent || 0);
-          if (ind > startIndent) end++;
-          else break;
-        }
-        insertIndex = end;
+    const gi = p.items.findIndex(x => x.id === anchorId);
+    if (gi >= 0 && !p.items[gi].archived){
+      const startIndent = Number(p.items[gi].indent || 0);
+      let end = gi + 1;
+      while (end < p.items.length){
+        const next = p.items[end];
+        if (next.archived) break;
+        const ind = Number(next.indent || 0);
+        if (ind > startIndent) end++;
+        else break;
       }
+      insertIndex = end;
     }
 
     p.items.splice(insertIndex, 0, ...newItems);
@@ -1198,25 +1158,24 @@
     render(focusedId);
   }
 
-  async function doCopy(){
+  async function doCopyById(rowId){
     if (view !== "active"){ toast("Active only"); return; }
-    if (!focusedId){ toast("No focus"); return; }
-    const block = getBlockFromActive(focusedId);
+    const block = getBlockFromActive(rowId);
     if (!block.length){ toast("Nothing"); return; }
     const ok = await writeClipboard(blockToText(block));
     toast(ok ? "Copied" : "Copy failed");
   }
 
-  async function doPaste(){
+  async function doPasteBelowId(rowId){
     if (view !== "active"){ toast("Active only"); return; }
     const text = await readClipboard();
     const items = textToItems(text);
     if (!items.length){ toast("Nothing"); return; }
-    insertItemsBelowFocused(items);
+    insertItemsBelowId(rowId, items);
     toast("Pasted");
   }
 
-  // Export/Import current page + Backup/Restore ALL
+  // ---------- Export/Import current page + Backup/Restore ALL ----------
   function downloadBlob(blob, filename){
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1224,7 +1183,6 @@
     a.click();
     URL.revokeObjectURL(a.href);
   }
-
   function safeName(name){
     return String(name || "page").trim().replace(/[^\w\-]+/g, "_").slice(0, 40) || "page";
   }
@@ -1344,7 +1302,58 @@
     toast("Restored ALL");
   }
 
-  // -------- Events wiring --------
+  // ---------- Ctrl/Cmd+Shift+C/V inside task input ----------
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!mod || !e.shiftKey || !inTask) return;
+
+    if (e.key.toLowerCase() === "c"){
+      if (el.selectionStart !== el.selectionEnd) return;
+      e.preventDefault();
+      if (focusedId) doCopyById(focusedId);
+    }
+    if (e.key.toLowerCase() === "v"){
+      e.preventDefault();
+      if (focusedId) doPasteBelowId(focusedId);
+    }
+  });
+
+  // ---------- Ctrl+Alt+T => Today (always Active) ----------
+  function findTodayPageId(){
+    for (const [pid, pg] of Object.entries(notebook.pages)){
+      if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
+    }
+    return null;
+  }
+  function ensureTodayPage(){
+    let pid = findTodayPageId();
+    if (pid && notebook.pages[pid]) return pid;
+    pid = uid();
+    notebook.pages[pid] = {
+      id: pid,
+      name: "Today",
+      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
+      sortUndo: null
+    };
+    return pid;
+  }
+  function goToTodayPage(){
+    const todayId = ensureTodayPage();
+    switchPage(todayId);
+    setView("active");
+    toast("Today");
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
+      e.preventDefault();
+      goToTodayPage();
+    }
+  });
+
+  // ---------- Wire events ----------
   toggleUi.addEventListener("click", toggleUiMode);
 
   pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
@@ -1353,9 +1362,6 @@
 
   addRowBtn.addEventListener("click", addRow);
   sortBtn.addEventListener("click", sortOrUnsort);
-
-  copyBtn.addEventListener("click", doCopy);
-  pasteBtn.addEventListener("click", doPaste);
 
   exportJsonBtn.addEventListener("click", exportJson);
   importJsonBtn.addEventListener("click", () => fileJson.click());
@@ -1396,38 +1402,12 @@
   viewArchiveBtn.addEventListener("click", () => setView("archive"));
   deletePageBtn.addEventListener("click", deletePage);
 
-  // Ctrl+Alt+T => Today (always Active)
-  document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
-      e.preventDefault();
-      goToTodayPage();
-    }
-  });
-
-  // Ctrl/Cmd+Shift+C/V inside task input
-  document.addEventListener("keydown", (e) => {
-    const isMac = navigator.platform.toUpperCase().includes("MAC");
-    const mod = isMac ? e.metaKey : e.ctrlKey;
-    const el = document.activeElement;
-    const inTask = el && el.classList && el.classList.contains("task");
-    if (!mod || !e.shiftKey || !inTask) return;
-
-    if (e.key.toLowerCase() === "c"){
-      if (el.selectionStart !== el.selectionEnd) return;
-      e.preventDefault();
-      doCopy();
-    }
-    if (e.key.toLowerCase() === "v"){
-      e.preventDefault();
-      doPaste();
-    }
-  });
-
   // Init
   rebuildPageSelect();
   focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
   setView("active");
   updateSortLabel();
+  toast("");
 })();
 </script>
 </body>
