@@ -28,6 +28,12 @@
 
       --sidebar-w: 185px;
       --gap: 12px;
+
+      /* Pages rail */
+      --rail-w: 140px;
+      --rail-font: 12px;
+      --rail-color: rgba(0,0,0,0.40);
+      --rail-color-active: rgba(0,0,0,0.70);
     }
 
     *{ box-sizing:border-box; }
@@ -46,7 +52,7 @@
         #f4f4f4;
     }
 
-    /* Minimal action buttons (text-only) */
+    /* Minimal action buttons */
     button{
       font: inherit;
       background: none;
@@ -61,10 +67,10 @@
     button:active{ transform: translateY(1px); }
     button:disabled{ opacity:.35; cursor: default; transform:none; }
 
-    /* Hard-hide file inputs (prevents "Choose File") */
+    /* Hide file inputs (no “Choose File”) */
     input[type="file"]{ display:none !important; }
 
-    /* ---------- Header (centered on page width) ---------- */
+    /* ---------- Header ---------- */
     header{
       position: sticky;
       top: 0;
@@ -107,7 +113,7 @@
     /* ---------- Layout ---------- */
     .wrap{
       width:100%;
-      max-width: calc(var(--page-w) + var(--sidebar-w) + var(--gap));
+      max-width: calc(var(--page-w) + var(--sidebar-w) + var(--rail-w) + (var(--gap) * 2));
       margin: 0 auto;
       padding: 10px 8px 18px;
       display:flex;
@@ -127,6 +133,51 @@
     .main{
       width:100%;
       max-width: var(--page-w);
+    }
+
+    /* ---------- Right Pages Rail (always visible) ---------- */
+    .pages-rail{
+      width: var(--rail-w);
+      flex: 0 0 var(--rail-w);
+      position: sticky;
+      top: 56px;
+      align-self:flex-start;
+      font-size: var(--rail-font);
+      color: var(--rail-color);
+      user-select: none;
+    }
+    .pages-rail .rail-title{
+      font-weight: 600;
+      color: rgba(0,0,0,0.45);
+      margin: 6px 0 8px;
+      letter-spacing: 0.2px;
+    }
+    .pages-rail .pages-list{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      max-height: calc(100vh - 110px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .pages-rail .page-link{
+      text-align:left;
+      font-size: var(--rail-font);
+      color: var(--rail-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pages-rail .page-link.active{
+      color: var(--rail-color-active);
+      font-weight: 600;
+    }
+
+    /* Subtle scrollbar */
+    .pages-rail .pages-list::-webkit-scrollbar{ width: 6px; }
+    .pages-rail .pages-list::-webkit-scrollbar-thumb{
+      background: rgba(0,0,0,0.10);
+      border-radius: 999px;
     }
 
     /* ---------- Paper/grid ---------- */
@@ -305,12 +356,27 @@
     /* ---------- Compact mode layout ---------- */
     body.compact .sidebar{ display:none; }
     body.compact .wrap{
-      display:block;
-      max-width: var(--page-w);
+      display:flex;              /* keep rail visible */
+      max-width: calc(var(--page-w) + var(--rail-w) + var(--gap));
     }
     body.compact .main{
-      margin: 0 auto;
+      margin: 0;
       max-width: var(--page-w);
+    }
+    /* Keep rail visible in compact, but make it fixed so it doesn't squeeze */
+    body.compact .pages-rail{
+      position: fixed;
+      right: 10px;
+      top: 62px;
+      width: var(--rail-w);
+      max-height: calc(100vh - 80px);
+      background: transparent;
+      padding: 0;
+      z-index: 15;
+    }
+    body.compact .wrap{
+      justify-content: center;
+      padding-right: calc(var(--rail-w) + 14px);
     }
 
     /* iOS zoom prevention */
@@ -323,6 +389,8 @@
         --act-col: 72px;
         --indent-step: 18px;
         --sidebar-w: 180px;
+        --rail-w: 120px;
+        --rail-font: 11px;
       }
       .task{ font-size:16px; }
       .header-inner{ gap: 8px; }
@@ -398,6 +466,12 @@
     <textarea id="clipFallback" aria-hidden="true"
       style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
   </main>
+
+  <!-- ✅ Always-visible Pages rail -->
+  <aside class="pages-rail" aria-label="Pages rail">
+    <div class="rail-title">Pages</div>
+    <div class="pages-list" id="pagesRail"></div>
+  </aside>
 </div>
 
 <script>
@@ -414,6 +488,8 @@
   const statusEl = document.getElementById("status");
 
   const pageSelect = document.getElementById("pageSelect");
+  const pagesRail = document.getElementById("pagesRail");
+
   const newPageBtn = document.getElementById("newPage");
   const renamePageBtn = document.getElementById("renamePage");
 
@@ -478,10 +554,7 @@
     }, 900);
   }
 
-  /* -------------------------
-     Data Model (VALID)
-     notebook.pages is an object keyed by pageId
-     ------------------------- */
+  // Data
   function seedItems(){
     return [
       { id: uid(), text: "Task", done:false, indent:0, archived:false, archivedAt:null },
@@ -545,7 +618,7 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-      // migrate v2 -> v3 (single list)
+      // migrate v2 -> v3
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -596,14 +669,13 @@
   function saveNotebook(){
     localStorage.setItem(KEY_V3, JSON.stringify(notebook));
     rebuildPageSelect();
+    rebuildPagesRail();
     updateSortLabel();
   }
 
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-  /* -------------------------
-     Pages
-     ------------------------- */
+  // Pages UI
   function rebuildPageSelect(){
     const pages = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
     pageSelect.innerHTML = "";
@@ -615,6 +687,20 @@
     }
     pageSelect.value = notebook.activePageId;
     deletePageBtn.disabled = Object.keys(notebook.pages).length <= 1;
+  }
+
+  function rebuildPagesRail(){
+    const pages = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
+    pagesRail.innerHTML = "";
+    for (const p of pages){
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "page-link" + (p.id === notebook.activePageId ? " active" : "");
+      b.textContent = p.name;
+      b.title = p.name;
+      b.addEventListener("click", () => switchPage(p.id));
+      pagesRail.appendChild(b);
+    }
   }
 
   function switchPage(pageId){
@@ -666,9 +752,7 @@
     toast("Page deleted");
   }
 
-  /* -------------------------
-     View + items
-     ------------------------- */
+  // View
   function setView(v){
     view = v;
     render(focusedId);
@@ -680,9 +764,7 @@
     return items.filter(it => view === "active" ? !it.archived : it.archived);
   }
 
-  /* -------------------------
-     Rendering
-     ------------------------- */
+  // Render
   function getItemById(id){
     return currentPage().items.find(x => x.id === id) || null;
   }
@@ -781,9 +863,7 @@
     }
   }
 
-  /* -------------------------
-     Row editing keys
-     ------------------------- */
+  // Keys within task input
   function onKey(e, id){
     const p = currentPage();
     const it = getItemById(id);
@@ -853,9 +933,7 @@
     }
   }
 
-  /* -------------------------
-     + Row (always visible)
-     ------------------------- */
+  // + Row
   function addRow(){
     if (view !== "active") setView("active");
     const p = currentPage();
@@ -872,9 +950,7 @@
     render(focusedId);
   }
 
-  /* -------------------------
-     Archive actions
-     ------------------------- */
+  // Archive actions
   function archiveDone(){
     const p = currentPage();
     const toArchive = p.items.filter(x => !x.archived && x.done);
@@ -924,9 +1000,7 @@
     render(focusedId);
   }
 
-  /* -------------------------
-     Today page + Ctrl+Alt+T
-     ------------------------- */
+  // Today + Ctrl+Alt+T
   function findTodayPageId(){
     for (const [pid, pg] of Object.entries(notebook.pages)){
       if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -961,9 +1035,7 @@
     }
   });
 
-  /* -------------------------
-     Move block to Today (append)
-     ------------------------- */
+  // Move block to Today
   function getVisibleBlock(list, startId){
     const startIdx = list.findIndex(x => x.id === startId);
     if (startIdx < 0) return { ids: [], nextFocusId: null };
@@ -1018,9 +1090,7 @@
     toast(`Moved ${moving.length}`);
   }
 
-  /* -------------------------
-     Sort toggle (block-safe)
-     ------------------------- */
+  // Sort toggle (block-safe)
   function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
 
   function blockify(list){
@@ -1085,9 +1155,7 @@
     toast("Sorted");
   }
 
-  /* -------------------------
-     Copy/Paste per row (indent preserved)
-     ------------------------- */
+  // Clipboard per row
   async function writeClipboard(text){
     try{
       await navigator.clipboard.writeText(text);
@@ -1210,9 +1278,7 @@
     toast("Pasted");
   }
 
-  /* -------------------------
-     Export/Import/Backup/Restore
-     ------------------------- */
+  // Export/Import/Backup/Restore
   function downloadBlob(blob, filename){
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1220,7 +1286,6 @@
     a.click();
     URL.revokeObjectURL(a.href);
   }
-
   function safeName(name){
     return String(name || "page").trim().replace(/[^\w\-]+/g, "_").slice(0, 40) || "page";
   }
@@ -1335,14 +1400,32 @@
     focusedId = null;
     saveNotebook();
     rebuildPageSelect();
+    rebuildPagesRail();
     setView("active");
     render(null);
     toast("Restored ALL");
   }
 
-  /* -------------------------
-     Wire events
-     ------------------------- */
+  // Ctrl/Cmd+Shift+C/V inside task input (still supported)
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!mod || !e.shiftKey || !inTask) return;
+
+    if (e.key.toLowerCase() === "c"){
+      if (el.selectionStart !== el.selectionEnd) return;
+      e.preventDefault();
+      if (focusedId) doCopyById(focusedId);
+    }
+    if (e.key.toLowerCase() === "v"){
+      e.preventDefault();
+      if (focusedId) doPasteBelowId(focusedId);
+    }
+  });
+
+  // Wire events
   toggleUi.addEventListener("click", toggleUiMode);
 
   pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
@@ -1391,27 +1474,9 @@
   viewArchiveBtn.addEventListener("click", () => setView("archive"));
   deletePageBtn.addEventListener("click", deletePage);
 
-  // Ctrl/Cmd+Shift+C/V in task input still supported
-  document.addEventListener("keydown", (e) => {
-    const isMac = navigator.platform.toUpperCase().includes("MAC");
-    const mod = isMac ? e.metaKey : e.ctrlKey;
-    const el = document.activeElement;
-    const inTask = el && el.classList && el.classList.contains("task");
-    if (!mod || !e.shiftKey || !inTask) return;
-
-    if (e.key.toLowerCase() === "c"){
-      if (el.selectionStart !== el.selectionEnd) return;
-      e.preventDefault();
-      if (focusedId) doCopyById(focusedId);
-    }
-    if (e.key.toLowerCase() === "v"){
-      e.preventDefault();
-      if (focusedId) doPasteBelowId(focusedId);
-    }
-  });
-
   // Init
   rebuildPageSelect();
+  rebuildPagesRail();
   focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
   setView("active");
   updateSortLabel();
