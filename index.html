@@ -270,12 +270,12 @@
     /* -------- Compact UI Mode ----------
        Hide everything except:
        page dropdown, +Page, Rename
+       BUT KEEP move-to-today (→) feature visible
     ----------------------------------- */
     body.compact-ui .tabs{ display:none !important; }
     body.compact-ui #deletePage{ display:none !important; }
     body.compact-ui .bar{ display:none !important; }
-    body.compact-ui .cell.move{ display:none !important; }
-    body.compact-ui .row{ grid-template-columns: var(--check-col) 1fr; }
+    /* NOTE: do NOT hide .cell.move and do NOT change .row columns */
 
     @media (max-width: 520px){
       :root{
@@ -371,7 +371,7 @@
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
     // -----------------------------
-    // DOM refs (define BEFORE using)
+    // DOM refs (define before using)
     // -----------------------------
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
@@ -410,7 +410,7 @@
     const fileAll  = document.getElementById("fileAll");
 
     // -----------------------------
-    // UI compact state (FIXED)
+    // UI compact state
     // -----------------------------
     let uiCompact = (localStorage.getItem(UI_KEY) === "1");
     function applyUiMode(){
@@ -509,7 +509,7 @@
         const raw3 = localStorage.getItem(KEY_V3);
         if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-        // migrate v2 -> v3
+        // migrate v2 -> v3 (single list)
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
           const items = normalizeItems(JSON.parse(raw2));
@@ -525,7 +525,7 @@
           return nb;
         }
 
-        // migrate v1 -> v3
+        // migrate v1 -> v3 (older)
         const raw1 = localStorage.getItem(KEY_V1);
         if (raw1){
           const parsed1 = JSON.parse(raw1);
@@ -550,6 +550,7 @@
             return nb;
           }
         }
+
         return null;
       }catch(e){
         return null;
@@ -564,9 +565,7 @@
       status("Saved");
     }
 
-    function currentPage(){
-      return notebook.pages[notebook.activePageId];
-    }
+    function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
     // -----------------------------
     // Pages
@@ -821,7 +820,7 @@
     }
 
     // -----------------------------
-    // Archive / Restore / Delete
+    // Archive
     // -----------------------------
     function archiveDone(){
       const p = currentPage();
@@ -870,7 +869,7 @@
     }
 
     // -----------------------------
-    // Move block to Today (append bottom)
+    // Today page helpers + Ctrl+Alt+T shortcut
     // -----------------------------
     function findTodayPageId(){
       for (const [pid, pg] of Object.entries(notebook.pages)){
@@ -882,11 +881,33 @@
     function ensureTodayPage(){
       let pid = findTodayPageId();
       if (pid && notebook.pages[pid]) return pid;
+
       pid = uid();
-      notebook.pages[pid] = { id: pid, name: "Today", items: [], sortUndo: null };
+      notebook.pages[pid] = {
+        id: pid,
+        name: "Today",
+        items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
+        sortUndo: null
+      };
       return pid;
     }
 
+    function goToTodayPage(){
+      const todayId = ensureTodayPage();
+      switchPage(todayId);
+      setView("active");  // ✅ always Active tab
+      status("Today");
+    }
+
+    // ✅ Ctrl + Alt + T (Windows/Linux). (Mac users can use Cmd+Option+T if you want later)
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
+        e.preventDefault();
+        goToTodayPage();
+      }
+    });
+
+    // Move block to Today (append bottom)
     function getVisibleBlock(list, startId){
       const startIdx = list.findIndex(x => x.id === startId);
       if (startIdx < 0) return { ids: [], nextFocusId: null };
@@ -966,7 +987,6 @@
     function sortOrUnsortToggle(){
       const p = currentPage();
 
-      // Unsort if snapshot exists
       if (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
         const snapshot = p.sortUndo.ids.slice();
         const byId = new Map(p.items.map(x => [x.id, x]));
@@ -988,7 +1008,6 @@
         return;
       }
 
-      // Save snapshot then sort current view blocks
       p.sortUndo = { ids: p.items.map(x => x.id), savedAt: Date.now() };
 
       const active = p.items.filter(x => !x.archived);
@@ -1091,7 +1110,6 @@
       if (!newItems.length) return;
       const p = currentPage();
 
-      // insert before archived section by default
       let insertIndex = p.items.findIndex(x => x.archived);
       if (insertIndex < 0) insertIndex = p.items.length;
 
@@ -1303,7 +1321,7 @@
       if (!mod || !e.shiftKey || !inTask) return;
 
       if (e.key.toLowerCase() === "c"){
-        if (el.selectionStart !== el.selectionEnd) return; // normal copy if selection
+        if (el.selectionStart !== el.selectionEnd) return;
         e.preventDefault();
         doCopy();
       }
