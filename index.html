@@ -19,7 +19,7 @@
       --pad-x: 4px;
 
       --check-col: 28px;
-      --move-col: 36px;           /* compact for arrow button */
+      --move-col: 36px;           /* Today arrow column */
       --indent-step: 16px;
       --max-indent: 6;
 
@@ -209,7 +209,6 @@
       padding-left: calc(var(--pad-x) + (var(--indent) * var(--indent-step)));
     }
 
-    /* Arrow button */
     .today-btn{
       border:1px solid rgba(0,0,0,0.12);
       background: rgba(255,255,255,0.65);
@@ -222,10 +221,7 @@
       color: #222;
     }
     .today-btn:active{ transform: translateY(1px); }
-    .today-btn:disabled{
-      opacity: 0.35;
-      cursor: default;
-    }
+    .today-btn:disabled{ opacity: 0.35; cursor: default; }
 
     .bar{
       display:flex;
@@ -257,6 +253,17 @@
     }
 
     .file{ display:none; }
+
+    /* Clipboard fallback textarea (off-screen, not display:none) */
+    #clipFallback{
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
 
     @media (max-width: 520px){
       :root{
@@ -318,6 +325,10 @@
       <button class="action danger" id="deleteFocused">Delete focused</button>
       <button class="action danger" id="emptyArchive">Empty archive</button>
 
+      <!-- NEW: Copy/Paste -->
+      <button class="action" id="copyTasks">Copy</button>
+      <button class="action" id="pasteTasks">Paste</button>
+
       <button class="action" id="exportJson">Export JSON</button>
       <button class="action" id="importJson">Import JSON</button>
       <button class="action" id="exportTxt">Export TXT</button>
@@ -332,11 +343,17 @@
       <input class="file" id="fileTxt" type="file" accept="text/plain,.txt" />
       <input class="file" id="fileAll" type="file" accept="application/json" />
 
+      <!-- Clipboard fallback -->
+      <textarea id="clipFallback" aria-hidden="true"></textarea>
+
       <div class="small" id="status"></div>
     </div>
   </div>
 
   <script>
+    // -----------------------------
+    // Storage keys
+    // -----------------------------
     const KEY_V3 = "tiny_todo_v3_pages";
     const KEY_V2 = "tiny_todo_v2";
     const KEY_V1 = "tiny_todo_v1";
@@ -346,6 +363,7 @@
     let view = "active";
     let focusedId = null;
 
+    // DOM
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
 
@@ -364,6 +382,9 @@
     const btnDeleteFocused = document.getElementById("deleteFocused");
     const btnEmptyArchive = document.getElementById("emptyArchive");
 
+    const btnCopyTasks = document.getElementById("copyTasks");
+    const btnPasteTasks = document.getElementById("pasteTasks");
+
     const btnExportJson = document.getElementById("exportJson");
     const btnImportJson = document.getElementById("importJson");
     const btnExportTxt  = document.getElementById("exportTxt");
@@ -378,6 +399,9 @@
     const fileTxt  = document.getElementById("fileTxt");
     const fileAll  = document.getElementById("fileAll");
 
+    // -----------------------------
+    // Helpers
+    // -----------------------------
     function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
     function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
@@ -440,10 +464,15 @@
       return nb;
     }
 
+    // -----------------------------
+    // Load / Save with Migration
+    // -----------------------------
     function loadNotebook(){
       try{
         const raw3 = localStorage.getItem(KEY_V3);
-        if (raw3) return ensureNotebookShape(JSON.parse(raw3));
+        if (raw3){
+          return ensureNotebookShape(JSON.parse(raw3));
+        }
 
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
@@ -452,7 +481,9 @@
           const nb = ensureNotebookShape({
             version: 1,
             activePageId: pid,
-            pages: { [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null } }
+            pages: {
+              [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null }
+            }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
           return nb;
@@ -474,7 +505,9 @@
             const nb = ensureNotebookShape({
               version: 1,
               activePageId: pid,
-              pages: { [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null } }
+              pages: {
+                [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null }
+              }
             });
             localStorage.setItem(KEY_V3, JSON.stringify(nb));
             return nb;
@@ -504,6 +537,9 @@
 
     function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
+    // -----------------------------
+    // Pages UI
+    // -----------------------------
     function rebuildPageSelect(){
       const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
       const currentId = notebook.activePageId;
@@ -574,6 +610,9 @@
       status("Page deleted");
     }
 
+    // -----------------------------
+    // View + Rendering
+    // -----------------------------
     function setView(v){
       view = v;
       tabActive.classList.toggle("active", view === "active");
@@ -585,10 +624,7 @@
 
       btnRestoreFocused.style.display = inActive ? "none" : "";
       btnDeleteFocused.style.display  = inActive ? "none" : "";
-      btnEmptyArchive.style.display   = inActive ? "none" : "none"; // unchanged minimal UI
-
-      // Show emptyArchive only in archive view
-      btnEmptyArchive.style.display = (view === "archive") ? "" : "none";
+      btnEmptyArchive.style.display   = (view === "archive") ? "" : "none";
 
       updateSortToggleLabel();
       render(focusedId);
@@ -698,6 +734,9 @@
       if (el) el.focus();
     }
 
+    // -----------------------------
+    // Keyboard
+    // -----------------------------
     function onKey(e, id){
       const p = currentPage();
       const it = getItemById(id);
@@ -765,6 +804,9 @@
       }
     }
 
+    // -----------------------------
+    // Archive / Restore / Delete
+    // -----------------------------
     function archiveDone(){
       const p = currentPage();
       const toArchive = p.items.filter(x => !x.archived && x.done);
@@ -813,7 +855,9 @@
       render(focusedId);
     }
 
-    // Move block to Today
+    // -----------------------------
+    // Move block to Today (append at bottom)
+    // -----------------------------
     function findTodayPageId(){
       for (const [pid, pg] of Object.entries(notebook.pages)){
         if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -850,7 +894,7 @@
     function moveBlockToToday(startId){
       const source = currentPage();
       if (String(source.name || "").trim().toLowerCase() === "today") { status("Already in Today"); return; }
-      if (view !== "active") { status("Switch to Active"); return; }
+      if (view !== "active") { status("Active only"); return; }
 
       const vis = visibleItems();
       const { ids, nextFocusId } = getVisibleBlock(vis, startId);
@@ -881,7 +925,9 @@
       status(`Moved ${moving.length} row(s)`);
     }
 
-    // Sort toggle
+    // -----------------------------
+    // Sort toggle (A→Z / Unsort)
+    // -----------------------------
     function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
 
     function blockify(list){
@@ -949,7 +995,9 @@
       status("Sorted A→Z");
     }
 
-    // Export/Import/Backup/Restore
+    // -----------------------------
+    // Export / Import (current page) + Backup/Restore ALL
+    // -----------------------------
     function downloadBlob(blob, filename){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -966,7 +1014,6 @@
       const blob = new Blob([JSON.stringify(p.items, null, 2)], { type: "application/json" });
       downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.json`);
     }
-
     async function importJsonFile(f){
       const p = currentPage();
       const text = await f.text();
@@ -995,6 +1042,7 @@
       const lines = [];
       const active = p.items.filter(x => !x.archived);
       const archived = p.items.filter(x => x.archived);
+
       for (const it of active) lines.push(formatTxtLine(it));
       if (archived.length){
         lines.push(ARCHIVE_MARKER);
@@ -1007,13 +1055,14 @@
       const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
       let inArchive = false;
       const out = [];
+
       for (let line of rawLines){
         if (!line || line.trim() === "") continue;
         if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
 
         let indent = 0;
         while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-        while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+        while (line.startsWith("  ")){ indent++; line = line.slice(2); } // 2 spaces = 1 indent
         indent = clamp(indent, 0, MAX_INDENT);
 
         const trimmed = line.trimStart();
@@ -1088,7 +1137,160 @@
       status("Restored ALL");
     }
 
+    // -----------------------------
+    // NEW: Copy / Paste (block)
+    // -----------------------------
+    async function writeClipboard(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch(e){
+        // fallback: textarea + execCommand
+        try{
+          const ta = document.getElementById("clipFallback");
+          ta.value = text;
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand("copy");
+          return ok;
+        }catch(_){
+          return false;
+        }
+      }
+    }
+
+    async function readClipboard(){
+      try{
+        return await navigator.clipboard.readText();
+      }catch(e){
+        // fallback: prompt (works everywhere)
+        return prompt("Paste tasks text here:") || "";
+      }
+    }
+
+    function getActiveVisibleList(){
+      const p = currentPage();
+      return p.items.filter(it => !it.archived);
+    }
+
+    function getBlockFromActive(startId){
+      const list = getActiveVisibleList();
+      const startIdx = list.findIndex(x => x.id === startId);
+      if (startIdx < 0) return [];
+
+      const startIndent = Number(list[startIdx].indent || 0);
+      const block = [list[startIdx]];
+
+      for (let i = startIdx + 1; i < list.length; i++){
+        const ind = Number(list[i].indent || 0);
+        if (ind > startIndent) block.push(list[i]);
+        else break;
+      }
+      return block;
+    }
+
+    function blockToText(block){
+      return block.map(formatTxtLine).join("\n") + "\n";
+    }
+
+    function textToItems(text){
+      // Active-only paste (no archive marker support here—keep minimal)
+      const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+      const out = [];
+
+      for (let line of lines){
+        if (!line || line.trim() === "") continue;
+
+        let indent = 0;
+        while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+        while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+        indent = clamp(indent, 0, MAX_INDENT);
+
+        const trimmed = line.trimStart();
+        let done = false;
+        let textPart = trimmed;
+
+        const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+        if (m){
+          done = (m[1].toLowerCase() === "x");
+          textPart = m[2] ?? "";
+        } else {
+          textPart = trimmed;
+        }
+
+        out.push({
+          id: uid(),
+          text: String(textPart),
+          done,
+          indent,          // ✅ keep indent as pasted (no rebasing)
+          archived: false,
+          archivedAt: null
+        });
+      }
+      return out;
+    }
+
+    function insertItemsBelowFocused(newItems){
+      if (!newItems.length) return;
+
+      const p = currentPage();
+
+      // Default append to end of ACTIVE area (before first archived item if mixed)
+      let insertIndex = p.items.findIndex(x => x.archived);
+      if (insertIndex < 0) insertIndex = p.items.length;
+
+      if (focusedId){
+        const gi = p.items.findIndex(x => x.id === focusedId);
+        if (gi >= 0 && !p.items[gi].archived){
+          const startIndent = Number(p.items[gi].indent || 0);
+          let end = gi + 1;
+
+          // Move through the block within active region
+          while (end < p.items.length){
+            const next = p.items[end];
+            if (next.archived) break;
+            const ind = Number(next.indent || 0);
+            if (ind > startIndent) end++;
+            else break;
+          }
+          insertIndex = end;
+        }
+      }
+
+      p.items.splice(insertIndex, 0, ...newItems);
+
+      p.sortUndo = null; // order changed -> clear sort snapshot
+      saveNotebook();
+
+      focusedId = newItems[0].id;
+      render(focusedId);
+    }
+
+    async function doCopy(){
+      if (view !== "active"){ status("Active only"); return; }
+      if (!focusedId){ status("No focus"); return; }
+
+      const block = getBlockFromActive(focusedId);
+      if (!block.length){ status("Nothing"); return; }
+
+      const ok = await writeClipboard(blockToText(block));
+      status(ok ? "Copied" : "Copy failed");
+    }
+
+    async function doPaste(){
+      if (view !== "active"){ status("Active only"); return; }
+
+      const text = await readClipboard();
+      const items = textToItems(text);
+      if (!items.length){ status("Nothing"); return; }
+
+      insertItemsBelowFocused(items);
+      status("Pasted");
+    }
+
+    // -----------------------------
     // Wire up UI
+    // -----------------------------
     tabActive.addEventListener("click", () => setView("active"));
     tabArchive.addEventListener("click", () => setView("archive"));
 
@@ -1111,6 +1313,33 @@
     btnRestoreFocused.addEventListener("click", restoreFocused);
     btnDeleteFocused.addEventListener("click", deleteFocused);
     btnEmptyArchive.addEventListener("click", emptyArchive);
+
+    btnCopyTasks.addEventListener("click", doCopy);
+    btnPasteTasks.addEventListener("click", doPaste);
+
+    // Keyboard shortcuts (minimal):
+    // Ctrl/Cmd+Shift+C (copy block) / Ctrl/Cmd+Shift+V (paste block)
+    document.addEventListener("keydown", async (e) => {
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+
+      const el = document.activeElement;
+      const inTask = el && el.classList && el.classList.contains("task");
+
+      if (!mod || !e.shiftKey || !inTask) return;
+
+      // Allow normal copy if user selected text
+      if (e.key.toLowerCase() === "c"){
+        if (el.selectionStart !== el.selectionEnd) return;
+        e.preventDefault();
+        doCopy();
+      }
+
+      if (e.key.toLowerCase() === "v"){
+        e.preventDefault();
+        doPaste();
+      }
+    });
 
     btnExportJson.addEventListener("click", exportJson);
     btnImportJson.addEventListener("click", () => fileJson.click());
