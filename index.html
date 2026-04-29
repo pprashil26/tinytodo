@@ -19,12 +19,14 @@
       --pad-x: 4px;
 
       --check-col: 28px;
-      --act-col: 62px; /* ⧉ ⎘ → */
+      --act-col: 66px; /* ⧉ ⎘ → */
       --indent-step: 16px;
       --max-indent: 6;
 
-      --a6w: 105mm;
-      --sidebar-w: 175px;
+      /* ✅ A5 page width */
+      --page-w: 148mm;
+
+      --sidebar-w: 185px;
       --gap: 12px;
     }
 
@@ -44,7 +46,7 @@
         #f4f4f4;
     }
 
-    /* Minimal action buttons */
+    /* Minimal action buttons (text-only) */
     button{
       font: inherit;
       background: none;
@@ -59,10 +61,10 @@
     button:active{ transform: translateY(1px); }
     button:disabled{ opacity:.35; cursor: default; transform:none; }
 
-    /* Hard hide file inputs (prevents "Choose File") */
+    /* Hard-hide file inputs (prevents "Choose File") */
     input[type="file"]{ display:none !important; }
 
-    /* ---------- Header (centered on A6 width) ---------- */
+    /* ---------- Header (centered on page width) ---------- */
     header{
       position: sticky;
       top: 0;
@@ -73,7 +75,7 @@
     }
     .header-inner{
       width: 100%;
-      max-width: var(--a6w);
+      max-width: var(--page-w);
       margin: 0 auto;
       padding: 6px 8px;
       display:flex;
@@ -81,6 +83,7 @@
       justify-content:center;
       gap:10px;
       flex-wrap: nowrap;
+      white-space: nowrap;
     }
     .title{
       font-weight: 600;
@@ -98,13 +101,13 @@
       color: rgba(0,0,0,0.70);
       outline: none;
       height: 26px;
-      max-width: 170px;
+      max-width: 240px;
     }
 
     /* ---------- Layout ---------- */
     .wrap{
       width:100%;
-      max-width: calc(var(--a6w) + var(--sidebar-w) + var(--gap));
+      max-width: calc(var(--page-w) + var(--sidebar-w) + var(--gap));
       margin: 0 auto;
       padding: 10px 8px 18px;
       display:flex;
@@ -112,6 +115,7 @@
       align-items:flex-start;
       justify-content:center;
     }
+
     .sidebar{
       width: var(--sidebar-w);
       flex: 0 0 var(--sidebar-w);
@@ -119,9 +123,10 @@
       top: 56px;
       align-self:flex-start;
     }
+
     .main{
       width:100%;
-      max-width: var(--a6w);
+      max-width: var(--page-w);
     }
 
     /* ---------- Paper/grid ---------- */
@@ -134,6 +139,7 @@
         0 10px 24px rgba(0,0,0,0.08),
         0 2px 6px rgba(0,0,0,0.06);
     }
+
     .grid{
       position: relative;
       background:
@@ -152,12 +158,14 @@
           var(--paper-line) var(--row-h)
         );
     }
+
     .row{
       display:grid;
       grid-template-columns: var(--check-col) 1fr var(--act-col);
       align-items:center;
       min-height: var(--row-h);
     }
+
     .cell{
       padding: 0 var(--pad-x);
       height: var(--row-h);
@@ -165,13 +173,16 @@
       align-items:center;
       min-width:0;
     }
+
     .cell.check{
       justify-content:center;
       border-right: 1px solid rgba(40,60,90,0.08);
     }
+
     .cell.text{
       padding-left: calc(var(--pad-x) + (var(--indentLevel) * var(--indent-step)));
     }
+
     .cell.act{
       justify-content:flex-end;
       gap: 4px;
@@ -185,6 +196,7 @@
       margin:0;
       accent-color:#222;
     }
+
     .task{
       width:100%;
       height: calc(var(--row-h) - 2px);
@@ -196,10 +208,11 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
     .done .task{ text-decoration: line-through; color:#777; }
     .archivedRow .task{ color:#666; }
 
-    /* Per-row action buttons */
+    /* ---------- Per-row actions ---------- */
     .mini-act{
       font-size: 12px;
       color: rgba(0,0,0,0.42);
@@ -209,6 +222,10 @@
     .mini-act:hover{ color: rgba(0,0,0,0.85); }
     .mini-act:disabled{ opacity: .25; }
 
+    /* Compact mode: hide copy/paste (only → visible) */
+    body.compact .mini-copy,
+    body.compact .mini-paste{ display:none !important; }
+
     /* ---------- Sidebar (chevrons) ---------- */
     .side-block{
       border: 1px solid rgba(0,0,0,0.08);
@@ -216,6 +233,7 @@
       background: rgba(255,255,255,0.55);
       padding: 8px;
     }
+
     details.group{
       border-top: 1px solid rgba(0,0,0,0.08);
       padding-top: 8px;
@@ -226,6 +244,7 @@
       padding-top:0;
       margin-top:0;
     }
+
     summary{
       list-style:none;
       cursor:pointer;
@@ -243,6 +262,7 @@
       opacity:.65;
     }
     details[open] summary::after{ transform: rotate(-90deg); }
+
     .group-body{
       margin-top: 8px;
       display:flex;
@@ -250,7 +270,7 @@
       gap: 8px;
     }
 
-    /* ---------- Bottom actions: together and always visible ---------- */
+    /* ---------- Bottom actions: together ---------- */
     .bottom-actions{
       display:flex;
       justify-content:center;
@@ -282,19 +302,16 @@
       text-overflow: ellipsis;
     }
 
-    /* ---------- Compact mode ---------- */
+    /* ---------- Compact mode layout ---------- */
     body.compact .sidebar{ display:none; }
     body.compact .wrap{
       display:block;
-      max-width: var(--a6w);
+      max-width: var(--page-w);
     }
     body.compact .main{
       margin: 0 auto;
-      max-width: var(--a6w);
+      max-width: var(--page-w);
     }
-    /* In compact mode hide copy/paste (only → visible) */
-    body.compact .mini-copy,
-    body.compact .mini-paste{ display:none !important; }
 
     /* iOS zoom prevention */
     @media (max-width: 520px){
@@ -425,7 +442,7 @@
   const fileAll = document.getElementById("fileAll");
   const clipFallback = document.getElementById("clipFallback");
 
-  // UI compact toggle
+  // Compact UI toggle
   let uiCompact = (localStorage.getItem(UI_KEY) === "1");
   function applyUiMode(){ body.classList.toggle("compact", uiCompact); }
   function toggleUiMode(){
@@ -461,10 +478,10 @@
     }, 900);
   }
 
-  // ---------- Data model ----------
-  // notebook = { version, activePageId, pages: { [pageId]: { id, name, items:[], sortUndo } } }
-  // item = { id, text, done, indent, archived, archivedAt }
-
+  /* -------------------------
+     Data Model (VALID)
+     notebook.pages is an object keyed by pageId
+     ------------------------- */
   function seedItems(){
     return [
       { id: uid(), text: "Task", done:false, indent:0, archived:false, archivedAt:null },
@@ -511,7 +528,6 @@
       p.items = normalizeItems(p.items);
       if (!("sortUndo" in p)) p.sortUndo = null;
 
-      // ensure at least one active row
       if (p.items.filter(x => !x.archived).length === 0){
         p.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
       }
@@ -545,7 +561,7 @@
         return nb;
       }
 
-      // migrate v1 -> v3 (older array)
+      // migrate v1 -> v3
       const raw1 = localStorage.getItem(KEY_V1);
       if (raw1){
         const parsed1 = JSON.parse(raw1);
@@ -585,7 +601,9 @@
 
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-  // ---------- Pages ----------
+  /* -------------------------
+     Pages
+     ------------------------- */
   function rebuildPageSelect(){
     const pages = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
     pageSelect.innerHTML = "";
@@ -648,7 +666,9 @@
     toast("Page deleted");
   }
 
-  // ---------- View ----------
+  /* -------------------------
+     View + items
+     ------------------------- */
   function setView(v){
     view = v;
     render(focusedId);
@@ -660,7 +680,9 @@
     return items.filter(it => view === "active" ? !it.archived : it.archived);
   }
 
-  // ---------- Render ----------
+  /* -------------------------
+     Rendering
+     ------------------------- */
   function getItemById(id){
     return currentPage().items.find(x => x.id === id) || null;
   }
@@ -759,7 +781,9 @@
     }
   }
 
-  // ---------- Task key handling ----------
+  /* -------------------------
+     Row editing keys
+     ------------------------- */
   function onKey(e, id){
     const p = currentPage();
     const it = getItemById(id);
@@ -829,12 +853,13 @@
     }
   }
 
-  // ---------- +Row ----------
+  /* -------------------------
+     + Row (always visible)
+     ------------------------- */
   function addRow(){
     if (view !== "active") setView("active");
     const p = currentPage();
 
-    // insert at end of active section (before archived)
     let insertIndex = p.items.findIndex(x => x.archived);
     if (insertIndex < 0) insertIndex = p.items.length;
 
@@ -847,7 +872,9 @@
     render(focusedId);
   }
 
-  // ---------- Archive actions ----------
+  /* -------------------------
+     Archive actions
+     ------------------------- */
   function archiveDone(){
     const p = currentPage();
     const toArchive = p.items.filter(x => !x.archived && x.done);
@@ -897,7 +924,9 @@
     render(focusedId);
   }
 
-  // ---------- Today + shortcut ----------
+  /* -------------------------
+     Today page + Ctrl+Alt+T
+     ------------------------- */
   function findTodayPageId(){
     for (const [pid, pg] of Object.entries(notebook.pages)){
       if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -925,7 +954,6 @@
     toast("Today");
   }
 
-  // Ctrl+Alt+T
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
       e.preventDefault();
@@ -933,7 +961,9 @@
     }
   });
 
-  // ---------- Move block to Today ----------
+  /* -------------------------
+     Move block to Today (append)
+     ------------------------- */
   function getVisibleBlock(list, startId){
     const startIdx = list.findIndex(x => x.id === startId);
     if (startIdx < 0) return { ids: [], nextFocusId: null };
@@ -988,8 +1018,11 @@
     toast(`Moved ${moving.length}`);
   }
 
-  // ---------- Sort toggle (block-safe) ----------
+  /* -------------------------
+     Sort toggle (block-safe)
+     ------------------------- */
   function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
+
   function blockify(list){
     const blocks = [];
     let current = null;
@@ -1052,7 +1085,9 @@
     toast("Sorted");
   }
 
-  // ---------- Copy/Paste per row ----------
+  /* -------------------------
+     Copy/Paste per row (indent preserved)
+     ------------------------- */
   async function writeClipboard(text){
     try{
       await navigator.clipboard.writeText(text);
@@ -1175,7 +1210,9 @@
     toast("Pasted");
   }
 
-  // ---------- Export/Import current page + Backup/Restore ALL ----------
+  /* -------------------------
+     Export/Import/Backup/Restore
+     ------------------------- */
   function downloadBlob(blob, filename){
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1183,6 +1220,7 @@
     a.click();
     URL.revokeObjectURL(a.href);
   }
+
   function safeName(name){
     return String(name || "page").trim().replace(/[^\w\-]+/g, "_").slice(0, 40) || "page";
   }
@@ -1302,58 +1340,9 @@
     toast("Restored ALL");
   }
 
-  // ---------- Ctrl/Cmd+Shift+C/V inside task input ----------
-  document.addEventListener("keydown", (e) => {
-    const isMac = navigator.platform.toUpperCase().includes("MAC");
-    const mod = isMac ? e.metaKey : e.ctrlKey;
-    const el = document.activeElement;
-    const inTask = el && el.classList && el.classList.contains("task");
-    if (!mod || !e.shiftKey || !inTask) return;
-
-    if (e.key.toLowerCase() === "c"){
-      if (el.selectionStart !== el.selectionEnd) return;
-      e.preventDefault();
-      if (focusedId) doCopyById(focusedId);
-    }
-    if (e.key.toLowerCase() === "v"){
-      e.preventDefault();
-      if (focusedId) doPasteBelowId(focusedId);
-    }
-  });
-
-  // ---------- Ctrl+Alt+T => Today (always Active) ----------
-  function findTodayPageId(){
-    for (const [pid, pg] of Object.entries(notebook.pages)){
-      if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
-    }
-    return null;
-  }
-  function ensureTodayPage(){
-    let pid = findTodayPageId();
-    if (pid && notebook.pages[pid]) return pid;
-    pid = uid();
-    notebook.pages[pid] = {
-      id: pid,
-      name: "Today",
-      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
-      sortUndo: null
-    };
-    return pid;
-  }
-  function goToTodayPage(){
-    const todayId = ensureTodayPage();
-    switchPage(todayId);
-    setView("active");
-    toast("Today");
-  }
-  document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
-      e.preventDefault();
-      goToTodayPage();
-    }
-  });
-
-  // ---------- Wire events ----------
+  /* -------------------------
+     Wire events
+     ------------------------- */
   toggleUi.addEventListener("click", toggleUiMode);
 
   pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
@@ -1401,6 +1390,25 @@
   viewActiveBtn.addEventListener("click", () => setView("active"));
   viewArchiveBtn.addEventListener("click", () => setView("archive"));
   deletePageBtn.addEventListener("click", deletePage);
+
+  // Ctrl/Cmd+Shift+C/V in task input still supported
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!mod || !e.shiftKey || !inTask) return;
+
+    if (e.key.toLowerCase() === "c"){
+      if (el.selectionStart !== el.selectionEnd) return;
+      e.preventDefault();
+      if (focusedId) doCopyById(focusedId);
+    }
+    if (e.key.toLowerCase() === "v"){
+      e.preventDefault();
+      if (focusedId) doPasteBelowId(focusedId);
+    }
+  });
 
   // Init
   rebuildPageSelect();
