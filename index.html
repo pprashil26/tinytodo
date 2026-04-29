@@ -1,7 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
+<!doctype html><!doctype-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tiny Todo</title>
 
@@ -65,7 +62,7 @@
       font-size: 13px;
       letter-spacing: 0.2px;
       white-space: nowrap;
-      cursor: pointer;          /* NEW: clickable toggle */
+      cursor: pointer;          /* tap/click toggles compact/full */
       user-select: none;
     }
 
@@ -268,14 +265,13 @@
     }
 
     /* -----------------------------
-       NEW: Compact UI mode
-       Only keep: pageSelect + newPage + renamePage
+       Compact UI mode
+       Keep only: page dropdown, + Page, Rename
        ----------------------------- */
     body.compact-ui .tabs{ display:none !important; }
-    body.compact-ui #deletePage{ display:none !important; } /* hide Del */
-    body.compact-ui .bar{ display:none !important; }        /* hide bottom actions */
+    body.compact-ui #deletePage{ display:none !important; }
+    body.compact-ui .bar{ display:none !important; }
 
-    /* hide row move column (→) and remove that column from grid */
     body.compact-ui .cell.move{ display:none !important; }
     body.compact-ui .row{ grid-template-columns: var(--check-col) 1fr; }
 
@@ -309,7 +305,6 @@
 <body>
   <header>
     <div class="header-inner">
-      <!-- NEW: click title to toggle compact/full controls -->
       <div class="title" id="uiToggleTitle" title="Tap to show/hide controls">Tiny Todo</div>
 
       <div class="header-right">
@@ -364,27 +359,22 @@
   </div>
 
   <script>
-    // -----------------------------
-    // Storage keys
-    // -----------------------------
     const KEY_V3 = "tiny_todo_v3_pages";
     const KEY_V2 = "tiny_todo_v2";
     const KEY_V1 = "tiny_todo_v1";
-    const UI_KEY = "tiny_todo_ui_compact";  // NEW: compact/full toggle
+    const UI_KEY = "tiny_todo_ui_compact";
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
     let notebook = loadNotebook() || seedNotebook();
     let view = "active";
     let focusedId = null;
 
-    // UI compact state
     let uiCompact = (localStorage.getItem(UI_KEY) === "1");
     applyUiMode();
 
     // DOM
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
-
     const uiToggleTitle = document.getElementById("uiToggleTitle");
 
     const tabActive = document.getElementById("tabActive");
@@ -419,9 +409,6 @@
     const fileTxt  = document.getElementById("fileTxt");
     const fileAll  = document.getElementById("fileAll");
 
-    // -----------------------------
-    // Helpers
-    // -----------------------------
     function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
     function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
@@ -479,29 +466,22 @@
       if (!nb.activePageId || !nb.pages[nb.activePageId]){
         nb.activePageId = pageIds[0];
       }
-
       nb.version = 1;
       return nb;
     }
 
-    // -----------------------------
     // UI compact toggle
-    // -----------------------------
     function applyUiMode(){
       document.body.classList.toggle("compact-ui", uiCompact);
-      uiToggleTitle.textContent = uiCompact ? "Tiny Todo" : "Tiny Todo";
       uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
     }
-
     function toggleUiMode(){
       uiCompact = !uiCompact;
       localStorage.setItem(UI_KEY, uiCompact ? "1" : "0");
       applyUiMode();
     }
 
-    // -----------------------------
     // Load / Save with Migration
-    // -----------------------------
     function loadNotebook(){
       try{
         const raw3 = localStorage.getItem(KEY_V3);
@@ -509,6 +489,7 @@
           return ensureNotebookShape(JSON.parse(raw3));
         }
 
+        // migrate v2 -> v3
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
           const items = normalizeItems(JSON.parse(raw2));
@@ -524,6 +505,7 @@
           return nb;
         }
 
+        // migrate v1 -> v3
         const raw1 = localStorage.getItem(KEY_V1);
         if (raw1){
           const parsed1 = JSON.parse(raw1);
@@ -572,9 +554,7 @@
 
     function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-    // -----------------------------
     // Pages UI
-    // -----------------------------
     function rebuildPageSelect(){
       const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
       const currentId = notebook.activePageId;
@@ -645,9 +625,7 @@
       status("Page deleted");
     }
 
-    // -----------------------------
     // View + Rendering
-    // -----------------------------
     function setView(v){
       view = v;
       tabActive.classList.toggle("active", view === "active");
@@ -700,11 +678,7 @@
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.checked = !!it.done;
-        cb.addEventListener("change", () => {
-          it.done = cb.checked;
-          saveNotebook();
-          render(it.id);
-        });
+        cb.addEventListener("change", () => { it.done = cb.checked; saveNotebook(); render(it.id); });
         cellCheck.appendChild(cb);
 
         const cellText = document.createElement("div");
@@ -729,13 +703,9 @@
         moveBtn.textContent = "→";
         moveBtn.title = "Move to Today";
         moveBtn.setAttribute("aria-label", "Move to Today");
-
         const canMove = (view === "active") && !isTodayPage;
         moveBtn.disabled = !canMove;
-        moveBtn.addEventListener("click", () => {
-          if (!canMove) return;
-          moveBlockToToday(it.id);
-        });
+        moveBtn.addEventListener("click", () => { if (canMove) moveBlockToToday(it.id); });
         cellMove.appendChild(moveBtn);
 
         row.appendChild(cellCheck);
@@ -836,9 +806,7 @@
       }
     }
 
-    // -----------------------------
     // Archive / Restore / Delete
-    // -----------------------------
     function archiveDone(){
       const p = currentPage();
       const toArchive = p.items.filter(x => !x.archived && x.done);
@@ -847,6 +815,7 @@
       toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
       saveNotebook();
       status(`Archived ${toArchive.length}`);
+      render(focusedId);
     }
 
     function restoreFocused(){
@@ -884,9 +853,7 @@
       render(focusedId);
     }
 
-    // -----------------------------
     // Move block to Today (append bottom)
-    // -----------------------------
     function findTodayPageId(){
       for (const [pid, pg] of Object.entries(notebook.pages)){
         if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -905,6 +872,7 @@
     function getVisibleBlock(list, startId){
       const startIdx = list.findIndex(x => x.id === startId);
       if (startIdx < 0) return { ids: [], nextFocusId: null };
+
       const startIndent = Number(list[startIdx].indent || 0);
       const block = [list[startIdx]];
       for (let i = startIdx + 1; i < list.length; i++){
@@ -912,6 +880,7 @@
         if (ind > startIndent) block.push(list[i]);
         else break;
       }
+
       const after = list[startIdx + block.length];
       const before = list[startIdx - 1];
       const nextFocusId = after ? after.id : (before ? before.id : null);
@@ -920,7 +889,7 @@
 
     function moveBlockToToday(startId){
       const source = currentPage();
-      if (String(source.name || "").trim().toLowerCase() === "today") { status("Already in Today"); return; }
+      if (String(source.name || "").trim().toLowerCase() === "today") { status("Already Today"); return; }
       if (view !== "active") { status("Active only"); return; }
 
       const vis = visibleItems();
@@ -952,9 +921,7 @@
       status(`Moved ${moving.length}`);
     }
 
-    // -----------------------------
     // Sort toggle (A→Z / Unsort)
-    // -----------------------------
     function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
 
     function blockify(list){
@@ -1021,9 +988,7 @@
       status("Sorted");
     }
 
-    // -----------------------------
     // Copy / Paste (minimal, block)
-    // -----------------------------
     async function writeClipboard(text){
       try{
         await navigator.clipboard.writeText(text);
@@ -1064,7 +1029,6 @@
       const list = getActiveVisibleList();
       const startIdx = list.findIndex(x => x.id === startId);
       if (startIdx < 0) return [];
-
       const startIndent = Number(list[startIdx].indent || 0);
       const block = [list[startIdx]];
       for (let i = startIdx + 1; i < list.length; i++){
@@ -1099,7 +1063,6 @@
           done = (m[1].toLowerCase() === "x");
           textPart = m[2] ?? "";
         }
-
         out.push({ id: uid(), text: String(textPart), done, indent, archived:false, archivedAt:null });
       }
       return out;
@@ -1153,10 +1116,7 @@
       status("Pasted");
     }
 
-    // -----------------------------
     // Export / Import (page) + Backup/Restore ALL
-    // (kept as-is)
-    // -----------------------------
     function downloadBlob(blob, filename){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -1281,9 +1241,7 @@
       status("Restored ALL");
     }
 
-    // -----------------------------
     // Wire up UI
-    // -----------------------------
     uiToggleTitle.addEventListener("click", toggleUiMode);
 
     tabActive.addEventListener("click", () => setView("active"));
@@ -1311,6 +1269,25 @@
 
     btnCopyTasks.addEventListener("click", doCopy);
     btnPasteTasks.addEventListener("click", doPaste);
+
+    // keyboard shortcuts: Ctrl/Cmd+Shift+C/V (only in task input)
+    document.addEventListener("keydown", (e) => {
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      const el = document.activeElement;
+      const inTask = el && el.classList && el.classList.contains("task");
+      if (!mod || !e.shiftKey || !inTask) return;
+
+      if (e.key.toLowerCase() === "c"){
+        if (el.selectionStart !== el.selectionEnd) return; // normal copy if selection
+        e.preventDefault();
+        doCopy();
+      }
+      if (e.key.toLowerCase() === "v"){
+        e.preventDefault();
+        doPaste();
+      }
+    });
 
     btnExportJson.addEventListener("click", exportJson);
     btnImportJson.addEventListener("click", () => fileJson.click());
@@ -1352,3 +1329,5 @@
   </script>
 </body>
 </html>
+<html lang="en">
+<head>
