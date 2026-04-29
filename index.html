@@ -19,7 +19,7 @@
     --pad-x: 4px;
 
     --check-col: 28px;
-    --move-col: 56px; /* wider to fit ⧉ ⎘ → */
+    --move-col: 34px;
     --indent-step: 16px;
     --max-indent: 6;
 
@@ -99,6 +99,7 @@
     height: 26px;
   }
 
+  /* Header buttons are minimal text already via button style */
   .header-actions{
     display:flex;
     gap:10px;
@@ -185,8 +186,7 @@
   }
 
   .cell.move{
-    justify-content:flex-end;
-    gap: 4px;
+    justify-content:center;
     border-left: 1px solid rgba(40,60,90,0.06);
   }
 
@@ -217,15 +217,20 @@
     color:#666;
   }
 
-  /* ---------- Per-row compact actions (⧉ ⎘ →) ---------- */
-  .mini-act{
-    font-size: 12px;
-    color: rgba(0,0,0,0.45);
-    padding: 0 2px;   /* tiny */
-    line-height: 1;
+  .today-btn{
+    border: 1px solid rgba(0,0,0,0.10);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.65);
+    padding: 0 7px;
+    height: 20px;
+    color: #666;
+    cursor: pointer;
   }
-  .mini-act:hover{ color: rgba(0,0,0,0.85); }
-  .mini-act:disabled{ opacity: .25; }
+  .today-btn:hover{ color:#111; }
+  .today-btn:disabled{
+    opacity: 0.35;
+    cursor: default;
+  }
 
   /* ---------- Sidebar (chevrons) ---------- */
   .side-block{
@@ -283,7 +288,7 @@
     font-size: 12px;
   }
 
-  /* ---------- Toast ---------- */
+  /* ---------- Toast (optional tiny feedback) ---------- */
   #toast{
     position: fixed;
     left: 50%;
@@ -314,11 +319,6 @@
     margin: 0 auto;
     max-width: var(--a6w);
   }
-  /* In compact mode: hide row copy/paste (only → visible) */
-  body.compact .mini-copy,
-  body.compact .mini-paste{
-    display:none !important;
-  }
 
   /* iOS zoom prevention */
   @media (max-width: 520px){
@@ -327,11 +327,13 @@
       --font: 15px;
       --pad-x: 6px;
       --check-col: 34px;
-      --move-col: 64px; /* a touch wider on mobile */
+      --move-col: 44px;
       --indent-step: 18px;
       --sidebar-w: 180px;
     }
     .task{ font-size:16px; }
+    input[type="checkbox"]{ width:16px; height:16px; }
+    .today-btn{ height: 24px; padding: 0 9px; }
   }
 </style>
 </head>
@@ -356,6 +358,14 @@
     <!-- Sidebar (only in non-compact) -->
     <aside class="sidebar">
       <div class="side-block">
+
+        <details class="group">
+          <summary>Clipboard</summary>
+          <div class="group-body">
+            <button type="button" id="copyBtn">Copy</button>
+            <button type="button" id="pasteBtn">Paste</button>
+          </div>
+        </details>
 
         <details class="group">
           <summary>Backup</summary>
@@ -431,9 +441,13 @@
   const pageSelect = document.getElementById("pageSelect");
   const newPageBtn = document.getElementById("newPage");
   const renamePageBtn = document.getElementById("renamePage");
+
   const grid = document.getElementById("grid");
 
-  // Sidebar
+  // Sidebar buttons
+  const copyBtn = document.getElementById("copyBtn");
+  const pasteBtn = document.getElementById("pasteBtn");
+
   const exportJsonBtn = document.getElementById("exportJsonBtn");
   const importJsonBtn = document.getElementById("importJsonBtn");
   const exportTxtBtn  = document.getElementById("exportTxtBtn");
@@ -450,7 +464,7 @@
   const viewArchiveBtn = document.getElementById("viewArchiveBtn");
   const deletePageBtn = document.getElementById("deletePageBtn");
 
-  // Bottom
+  // Bottom buttons
   const addRowBtn = document.getElementById("addRowBtn");
   const sortBtn = document.getElementById("sortBtn");
 
@@ -460,7 +474,7 @@
   const fileAll = document.getElementById("fileAll");
   const clipFallback = document.getElementById("clipFallback");
 
-  // Compact mode
+  // UI compact
   let uiCompact = (localStorage.getItem(UI_KEY) === "1");
   function applyUiMode(){
     body.classList.toggle("compact", uiCompact);
@@ -513,7 +527,7 @@
       version: 1,
       activePageId: pid,
       pages: {
-        [pid]: { id: pid, name: "Personal", items: seedItems(), sortUndo: null }
+        { id: pid, name: "Personal", items: seedItems(), sortUndo: null }
       }
     };
   }
@@ -569,9 +583,7 @@
         const nb = ensureNotebookShape({
           version: 1,
           activePageId: pid,
-          pages: {
-            [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null }
-          }
+          pages: { { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null } }
         });
         localStorage.setItem(KEY_V3, JSON.stringify(nb));
         return nb;
@@ -593,15 +605,12 @@
           const nb = ensureNotebookShape({
             version: 1,
             activePageId: pid,
-            pages: {
-              [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null }
-            }
+            pages: { { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null } }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
           return nb;
         }
       }
-
       return null;
     }catch(e){
       return null;
@@ -627,7 +636,9 @@
       pageSelect.appendChild(opt);
     }
     pageSelect.value = notebook.activePageId;
-    deletePageBtn.disabled = Object.keys(notebook.pages).length <= 1;
+
+    const disableDel = Object.keys(notebook.pages).length <= 1;
+    deletePageBtn.disabled = disableDel;
   }
 
   function switchPage(pageId){
@@ -643,7 +654,8 @@
     if (!name) return;
     const id = uid();
     notebook.pages[id] = {
-      id, name: name.trim(),
+      id,
+      name: name.trim(),
       items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
       sortUndo: null
     };
@@ -741,37 +753,16 @@
 
       const cellMove = document.createElement("div");
       cellMove.className = "cell move";
+      const moveBtn = document.createElement("button");
+      moveBtn.className = "today-btn";
+      moveBtn.textContent = "→";
+      moveBtn.title = "Move to Today";
+      moveBtn.setAttribute("aria-label", "Move to Today");
 
-      // Copy (⧉) - hidden in compact mode via CSS class mini-copy
-      const copyMini = document.createElement("button");
-      copyMini.className = "mini-act mini-copy";
-      copyMini.textContent = "⧉";
-      copyMini.title = "Copy block";
-      copyMini.disabled = (view !== "active");
-      copyMini.addEventListener("click", () => doCopyById(it.id));
-
-      // Paste (⎘) - hidden in compact mode via CSS class mini-paste
-      const pasteMini = document.createElement("button");
-      pasteMini.className = "mini-act mini-paste";
-      pasteMini.textContent = "⎘";
-      pasteMini.title = "Paste below block";
-      pasteMini.disabled = (view !== "active");
-      pasteMini.addEventListener("click", () => doPasteBelowId(it.id));
-
-      // Move to Today (→) - always visible
-      const moveMini = document.createElement("button");
-      moveMini.className = "mini-act";
-      moveMini.textContent = "→";
-      moveMini.title = "Move to Today";
-      moveMini.disabled = !(view === "active" && !isTodayPage);
-      moveMini.addEventListener("click", () => {
-        if (moveMini.disabled) return;
-        moveBlockToToday(it.id);
-      });
-
-      cellMove.appendChild(copyMini);
-      cellMove.appendChild(pasteMini);
-      cellMove.appendChild(moveMini);
+      const canMove = (view === "active") && !isTodayPage;
+      moveBtn.disabled = !canMove;
+      moveBtn.addEventListener("click", () => { if (canMove) moveBlockToToday(it.id); });
+      cellMove.appendChild(moveBtn);
 
       row.appendChild(cellCheck);
       row.appendChild(cellText);
@@ -936,7 +927,7 @@
     render(focusedId);
   }
 
-  // Today helpers + Ctrl+Alt+T (always Active)
+  // Today + Ctrl+Alt+T (always active)
   function findTodayPageId(){
     for (const [pid, pg] of Object.entries(notebook.pages)){
       if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -989,6 +980,7 @@
   }
 
   function insertIntoActiveSection(itemsArr, newItems){
+    // Insert before first archived item
     let idx = itemsArr.findIndex(x => x.archived);
     if (idx < 0) idx = itemsArr.length;
     itemsArr.splice(idx, 0, ...newItems);
@@ -1015,8 +1007,10 @@
       return true;
     });
 
+    // Append to bottom of Today ACTIVE section (before archived)
     insertIntoActiveSection(today.items, moving);
 
+    // Ensure source has at least one active row
     if (source.items.filter(x => !x.archived).length === 0){
       source.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
     }
@@ -1054,6 +1048,7 @@
   function sortOrUnsort(){
     const p = currentPage();
 
+    // Unsort
     if (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
       const snapshot = p.sortUndo.ids.slice();
       const byId = new Map(p.items.map(x => [x.id, x]));
@@ -1075,6 +1070,7 @@
       return;
     }
 
+    // Save snapshot
     p.sortUndo = { ids: p.items.map(x => x.id), savedAt: Date.now() };
 
     const active = p.items.filter(x => !x.archived);
@@ -1086,13 +1082,14 @@
     const sortedTarget = blocks.flatMap(b => b.items);
 
     p.items = (view === "active") ? [...sortedTarget, ...archived] : [...active, ...sortedTarget];
+
     saveNotebook();
     focusedId = sortedTarget[0]?.id || null;
     render(focusedId);
     toast("Sorted");
   }
 
-  // Clipboard copy/paste (indent preserved)
+  // Copy/Paste block (indent preserved)
   async function writeClipboard(text){
     try{
       await navigator.clipboard.writeText(text);
@@ -1170,26 +1167,28 @@
     return out;
   }
 
-  function insertItemsBelowId(anchorId, newItems){
+  function insertItemsBelowFocused(newItems){
     if (!newItems.length) return;
     const p = currentPage();
 
-    // default insert end of active section
+    // default: insert at end of active section
     let insertIndex = p.items.findIndex(x => x.archived);
     if (insertIndex < 0) insertIndex = p.items.length;
 
-    const gi = p.items.findIndex(x => x.id === anchorId);
-    if (gi >= 0 && !p.items[gi].archived){
-      const startIndent = Number(p.items[gi].indent || 0);
-      let end = gi + 1;
-      while (end < p.items.length){
-        const next = p.items[end];
-        if (next.archived) break;
-        const ind = Number(next.indent || 0);
-        if (ind > startIndent) end++;
-        else break;
+    if (focusedId){
+      const gi = p.items.findIndex(x => x.id === focusedId);
+      if (gi >= 0 && !p.items[gi].archived){
+        const startIndent = Number(p.items[gi].indent || 0);
+        let end = gi + 1;
+        while (end < p.items.length){
+          const next = p.items[end];
+          if (next.archived) break;
+          const ind = Number(next.indent || 0);
+          if (ind > startIndent) end++;
+          else break;
+        }
+        insertIndex = end;
       }
-      insertIndex = end;
     }
 
     p.items.splice(insertIndex, 0, ...newItems);
@@ -1199,20 +1198,21 @@
     render(focusedId);
   }
 
-  async function doCopyById(rowId){
+  async function doCopy(){
     if (view !== "active"){ toast("Active only"); return; }
-    const block = getBlockFromActive(rowId);
+    if (!focusedId){ toast("No focus"); return; }
+    const block = getBlockFromActive(focusedId);
     if (!block.length){ toast("Nothing"); return; }
     const ok = await writeClipboard(blockToText(block));
     toast(ok ? "Copied" : "Copy failed");
   }
 
-  async function doPasteBelowId(rowId){
+  async function doPaste(){
     if (view !== "active"){ toast("Active only"); return; }
     const text = await readClipboard();
     const items = textToItems(text);
     if (!items.length){ toast("Nothing"); return; }
-    insertItemsBelowId(rowId, items);
+    insertItemsBelowFocused(items);
     toast("Pasted");
   }
 
@@ -1344,7 +1344,7 @@
     toast("Restored ALL");
   }
 
-  // Events
+  // -------- Events wiring --------
   toggleUi.addEventListener("click", toggleUiMode);
 
   pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
@@ -1353,6 +1353,9 @@
 
   addRowBtn.addEventListener("click", addRow);
   sortBtn.addEventListener("click", sortOrUnsort);
+
+  copyBtn.addEventListener("click", doCopy);
+  pasteBtn.addEventListener("click", doPaste);
 
   exportJsonBtn.addEventListener("click", exportJson);
   importJsonBtn.addEventListener("click", () => fileJson.click());
@@ -1401,12 +1404,30 @@
     }
   });
 
+  // Ctrl/Cmd+Shift+C/V inside task input
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!mod || !e.shiftKey || !inTask) return;
+
+    if (e.key.toLowerCase() === "c"){
+      if (el.selectionStart !== el.selectionEnd) return;
+      e.preventDefault();
+      doCopy();
+    }
+    if (e.key.toLowerCase() === "v"){
+      e.preventDefault();
+      doPaste();
+    }
+  });
+
   // Init
   rebuildPageSelect();
   focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
   setView("active");
   updateSortLabel();
-  toast("");
 })();
 </script>
 </body>
