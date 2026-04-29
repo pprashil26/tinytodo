@@ -65,6 +65,8 @@
       font-size: 13px;
       letter-spacing: 0.2px;
       white-space: nowrap;
+      cursor: pointer;          /* NEW: clickable toggle */
+      user-select: none;
     }
 
     .header-right{
@@ -254,7 +256,7 @@
 
     .file{ display:none; }
 
-    /* Clipboard fallback textarea (off-screen, not display:none) */
+    /* Clipboard fallback textarea */
     #clipFallback{
       position: fixed;
       left: -9999px;
@@ -264,6 +266,18 @@
       opacity: 0;
       pointer-events: none;
     }
+
+    /* -----------------------------
+       NEW: Compact UI mode
+       Only keep: pageSelect + newPage + renamePage
+       ----------------------------- */
+    body.compact-ui .tabs{ display:none !important; }
+    body.compact-ui #deletePage{ display:none !important; } /* hide Del */
+    body.compact-ui .bar{ display:none !important; }        /* hide bottom actions */
+
+    /* hide row move column (→) and remove that column from grid */
+    body.compact-ui .cell.move{ display:none !important; }
+    body.compact-ui .row{ grid-template-columns: var(--check-col) 1fr; }
 
     @media (max-width: 520px){
       :root{
@@ -295,7 +309,8 @@
 <body>
   <header>
     <div class="header-inner">
-      <div class="title">Tiny Todo</div>
+      <!-- NEW: click title to toggle compact/full controls -->
+      <div class="title" id="uiToggleTitle" title="Tap to show/hide controls">Tiny Todo</div>
 
       <div class="header-right">
         <select class="page-select" id="pageSelect" title="Pages"></select>
@@ -325,7 +340,6 @@
       <button class="action danger" id="deleteFocused">Delete focused</button>
       <button class="action danger" id="emptyArchive">Empty archive</button>
 
-      <!-- NEW: Copy/Paste -->
       <button class="action" id="copyTasks">Copy</button>
       <button class="action" id="pasteTasks">Paste</button>
 
@@ -343,7 +357,6 @@
       <input class="file" id="fileTxt" type="file" accept="text/plain,.txt" />
       <input class="file" id="fileAll" type="file" accept="application/json" />
 
-      <!-- Clipboard fallback -->
       <textarea id="clipFallback" aria-hidden="true"></textarea>
 
       <div class="small" id="status"></div>
@@ -357,15 +370,22 @@
     const KEY_V3 = "tiny_todo_v3_pages";
     const KEY_V2 = "tiny_todo_v2";
     const KEY_V1 = "tiny_todo_v1";
+    const UI_KEY = "tiny_todo_ui_compact";  // NEW: compact/full toggle
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
     let notebook = loadNotebook() || seedNotebook();
     let view = "active";
     let focusedId = null;
 
+    // UI compact state
+    let uiCompact = (localStorage.getItem(UI_KEY) === "1");
+    applyUiMode();
+
     // DOM
     const grid = document.getElementById("grid");
     const statusEl = document.getElementById("status");
+
+    const uiToggleTitle = document.getElementById("uiToggleTitle");
 
     const tabActive = document.getElementById("tabActive");
     const tabArchive = document.getElementById("tabArchive");
@@ -462,6 +482,21 @@
 
       nb.version = 1;
       return nb;
+    }
+
+    // -----------------------------
+    // UI compact toggle
+    // -----------------------------
+    function applyUiMode(){
+      document.body.classList.toggle("compact-ui", uiCompact);
+      uiToggleTitle.textContent = uiCompact ? "Tiny Todo" : "Tiny Todo";
+      uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
+    }
+
+    function toggleUiMode(){
+      uiCompact = !uiCompact;
+      localStorage.setItem(UI_KEY, uiCompact ? "1" : "0");
+      applyUiMode();
     }
 
     // -----------------------------
@@ -725,18 +760,15 @@
       }
     }
 
-    function getItemById(id){
-      return currentPage().items.find(x => x.id === id) || null;
-    }
-
     function focusIndex(i){
       const el = grid.querySelector(`.row[data-index="${i}"] .task`);
       if (el) el.focus();
     }
 
-    // -----------------------------
-    // Keyboard
-    // -----------------------------
+    function getItemById(id){
+      return currentPage().items.find(x => x.id === id) || null;
+    }
+
     function onKey(e, id){
       const p = currentPage();
       const it = getItemById(id);
@@ -814,9 +846,6 @@
       const now = Date.now();
       toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
       saveNotebook();
-      const remaining = p.items.filter(x => !x.archived);
-      focusedId = remaining[0]?.id || null;
-      render(focusedId);
       status(`Archived ${toArchive.length}`);
     }
 
@@ -856,7 +885,7 @@
     }
 
     // -----------------------------
-    // Move block to Today (append at bottom)
+    // Move block to Today (append bottom)
     // -----------------------------
     function findTodayPageId(){
       for (const [pid, pg] of Object.entries(notebook.pages)){
@@ -876,7 +905,6 @@
     function getVisibleBlock(list, startId){
       const startIdx = list.findIndex(x => x.id === startId);
       if (startIdx < 0) return { ids: [], nextFocusId: null };
-
       const startIndent = Number(list[startIdx].indent || 0);
       const block = [list[startIdx]];
       for (let i = startIdx + 1; i < list.length; i++){
@@ -884,7 +912,6 @@
         if (ind > startIndent) block.push(list[i]);
         else break;
       }
-
       const after = list[startIdx + block.length];
       const before = list[startIdx - 1];
       const nextFocusId = after ? after.id : (before ? before.id : null);
@@ -922,7 +949,7 @@
       saveNotebook();
       focusedId = nextFocusId || source.items.find(x => !x.archived)?.id || source.items[0]?.id || null;
       render(focusedId);
-      status(`Moved ${moving.length} row(s)`);
+      status(`Moved ${moving.length}`);
     }
 
     // -----------------------------
@@ -978,7 +1005,6 @@
       }
 
       p.sortUndo = { ids: p.items.map(x => x.id), savedAt: Date.now() };
-
       const active = p.items.filter(x => !x.archived);
       const archived = p.items.filter(x => x.archived);
       const target = (view === "active") ? active : archived;
@@ -992,11 +1018,144 @@
       saveNotebook();
       focusedId = sortedTarget[0]?.id || null;
       render(focusedId);
-      status("Sorted A→Z");
+      status("Sorted");
     }
 
     // -----------------------------
-    // Export / Import (current page) + Backup/Restore ALL
+    // Copy / Paste (minimal, block)
+    // -----------------------------
+    async function writeClipboard(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch(e){
+        try{
+          const ta = document.getElementById("clipFallback");
+          ta.value = text;
+          ta.focus();
+          ta.select();
+          return document.execCommand("copy");
+        }catch(_){
+          return false;
+        }
+      }
+    }
+
+    async function readClipboard(){
+      try{
+        return await navigator.clipboard.readText();
+      }catch(e){
+        return prompt("Paste tasks text here:") || "";
+      }
+    }
+
+    function formatTxtLine(it){
+      const tabs = "\t".repeat(clamp(it.indent, 0, MAX_INDENT));
+      const mark = it.done ? "[x] " : "[ ] ";
+      return tabs + mark + (it.text || "");
+    }
+
+    function getActiveVisibleList(){
+      const p = currentPage();
+      return p.items.filter(it => !it.archived);
+    }
+
+    function getBlockFromActive(startId){
+      const list = getActiveVisibleList();
+      const startIdx = list.findIndex(x => x.id === startId);
+      if (startIdx < 0) return [];
+
+      const startIndent = Number(list[startIdx].indent || 0);
+      const block = [list[startIdx]];
+      for (let i = startIdx + 1; i < list.length; i++){
+        const ind = Number(list[i].indent || 0);
+        if (ind > startIndent) block.push(list[i]);
+        else break;
+      }
+      return block;
+    }
+
+    function blockToText(block){
+      return block.map(formatTxtLine).join("\n") + "\n";
+    }
+
+    function textToItems(text){
+      const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+      const out = [];
+      for (let line of lines){
+        if (!line || line.trim() === "") continue;
+
+        let indent = 0;
+        while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+        while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+        indent = clamp(indent, 0, MAX_INDENT);
+
+        const trimmed = line.trimStart();
+        let done = false;
+        let textPart = trimmed;
+
+        const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+        if (m){
+          done = (m[1].toLowerCase() === "x");
+          textPart = m[2] ?? "";
+        }
+
+        out.push({ id: uid(), text: String(textPart), done, indent, archived:false, archivedAt:null });
+      }
+      return out;
+    }
+
+    function insertItemsBelowFocused(newItems){
+      if (!newItems.length) return;
+      const p = currentPage();
+
+      let insertIndex = p.items.findIndex(x => x.archived);
+      if (insertIndex < 0) insertIndex = p.items.length;
+
+      if (focusedId){
+        const gi = p.items.findIndex(x => x.id === focusedId);
+        if (gi >= 0 && !p.items[gi].archived){
+          const startIndent = Number(p.items[gi].indent || 0);
+          let end = gi + 1;
+          while (end < p.items.length){
+            const next = p.items[end];
+            if (next.archived) break;
+            const ind = Number(next.indent || 0);
+            if (ind > startIndent) end++;
+            else break;
+          }
+          insertIndex = end;
+        }
+      }
+
+      p.items.splice(insertIndex, 0, ...newItems);
+      p.sortUndo = null;
+      saveNotebook();
+      focusedId = newItems[0].id;
+      render(focusedId);
+    }
+
+    async function doCopy(){
+      if (view !== "active"){ status("Active only"); return; }
+      if (!focusedId){ status("No focus"); return; }
+      const block = getBlockFromActive(focusedId);
+      if (!block.length){ status("Nothing"); return; }
+      const ok = await writeClipboard(blockToText(block));
+      status(ok ? "Copied" : "Copy failed");
+    }
+
+    async function doPaste(){
+      if (view !== "active"){ status("Active only"); return; }
+      const text = await readClipboard();
+      const items = textToItems(text);
+      if (!items.length){ status("Nothing"); return; }
+      insertItemsBelowFocused(items);
+      status("Pasted");
+    }
+
+    // -----------------------------
+    // Export / Import (page) + Backup/Restore ALL
+    // (kept as-is)
     // -----------------------------
     function downloadBlob(blob, filename){
       const a = document.createElement("a");
@@ -1031,12 +1190,6 @@
 
     const ARCHIVE_MARKER = "--- ARCHIVE ---";
 
-    function formatTxtLine(it){
-      const tabs = "\t".repeat(clamp(it.indent, 0, MAX_INDENT));
-      const mark = it.done ? "[x] " : "[ ] ";
-      return tabs + mark + (it.text || "");
-    }
-
     function toPlainText(){
       const p = currentPage();
       const lines = [];
@@ -1062,7 +1215,7 @@
 
         let indent = 0;
         while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-        while (line.startsWith("  ")){ indent++; line = line.slice(2); } // 2 spaces = 1 indent
+        while (line.startsWith("  ")){ indent++; line = line.slice(2); }
         indent = clamp(indent, 0, MAX_INDENT);
 
         const trimmed = line.trimStart();
@@ -1073,18 +1226,9 @@
         if (m){
           done = (m[1].toLowerCase() === "x");
           textPart = m[2] ?? "";
-        } else {
-          textPart = trimmed;
         }
 
-        out.push({
-          id: uid(),
-          text: String(textPart),
-          done,
-          indent,
-          archived: inArchive,
-          archivedAt: inArchive ? Date.now() : null
-        });
+        out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
       }
 
       if (out.filter(x => !x.archived).length === 0){
@@ -1138,159 +1282,10 @@
     }
 
     // -----------------------------
-    // NEW: Copy / Paste (block)
-    // -----------------------------
-    async function writeClipboard(text){
-      try{
-        await navigator.clipboard.writeText(text);
-        return true;
-      }catch(e){
-        // fallback: textarea + execCommand
-        try{
-          const ta = document.getElementById("clipFallback");
-          ta.value = text;
-          ta.focus();
-          ta.select();
-          const ok = document.execCommand("copy");
-          return ok;
-        }catch(_){
-          return false;
-        }
-      }
-    }
-
-    async function readClipboard(){
-      try{
-        return await navigator.clipboard.readText();
-      }catch(e){
-        // fallback: prompt (works everywhere)
-        return prompt("Paste tasks text here:") || "";
-      }
-    }
-
-    function getActiveVisibleList(){
-      const p = currentPage();
-      return p.items.filter(it => !it.archived);
-    }
-
-    function getBlockFromActive(startId){
-      const list = getActiveVisibleList();
-      const startIdx = list.findIndex(x => x.id === startId);
-      if (startIdx < 0) return [];
-
-      const startIndent = Number(list[startIdx].indent || 0);
-      const block = [list[startIdx]];
-
-      for (let i = startIdx + 1; i < list.length; i++){
-        const ind = Number(list[i].indent || 0);
-        if (ind > startIndent) block.push(list[i]);
-        else break;
-      }
-      return block;
-    }
-
-    function blockToText(block){
-      return block.map(formatTxtLine).join("\n") + "\n";
-    }
-
-    function textToItems(text){
-      // Active-only paste (no archive marker support here—keep minimal)
-      const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-      const out = [];
-
-      for (let line of lines){
-        if (!line || line.trim() === "") continue;
-
-        let indent = 0;
-        while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-        while (line.startsWith("  ")){ indent++; line = line.slice(2); }
-        indent = clamp(indent, 0, MAX_INDENT);
-
-        const trimmed = line.trimStart();
-        let done = false;
-        let textPart = trimmed;
-
-        const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-        if (m){
-          done = (m[1].toLowerCase() === "x");
-          textPart = m[2] ?? "";
-        } else {
-          textPart = trimmed;
-        }
-
-        out.push({
-          id: uid(),
-          text: String(textPart),
-          done,
-          indent,          // ✅ keep indent as pasted (no rebasing)
-          archived: false,
-          archivedAt: null
-        });
-      }
-      return out;
-    }
-
-    function insertItemsBelowFocused(newItems){
-      if (!newItems.length) return;
-
-      const p = currentPage();
-
-      // Default append to end of ACTIVE area (before first archived item if mixed)
-      let insertIndex = p.items.findIndex(x => x.archived);
-      if (insertIndex < 0) insertIndex = p.items.length;
-
-      if (focusedId){
-        const gi = p.items.findIndex(x => x.id === focusedId);
-        if (gi >= 0 && !p.items[gi].archived){
-          const startIndent = Number(p.items[gi].indent || 0);
-          let end = gi + 1;
-
-          // Move through the block within active region
-          while (end < p.items.length){
-            const next = p.items[end];
-            if (next.archived) break;
-            const ind = Number(next.indent || 0);
-            if (ind > startIndent) end++;
-            else break;
-          }
-          insertIndex = end;
-        }
-      }
-
-      p.items.splice(insertIndex, 0, ...newItems);
-
-      p.sortUndo = null; // order changed -> clear sort snapshot
-      saveNotebook();
-
-      focusedId = newItems[0].id;
-      render(focusedId);
-    }
-
-    async function doCopy(){
-      if (view !== "active"){ status("Active only"); return; }
-      if (!focusedId){ status("No focus"); return; }
-
-      const block = getBlockFromActive(focusedId);
-      if (!block.length){ status("Nothing"); return; }
-
-      const ok = await writeClipboard(blockToText(block));
-      status(ok ? "Copied" : "Copy failed");
-    }
-
-    async function doPaste(){
-      if (view !== "active"){ status("Active only"); return; }
-
-      const text = await readClipboard();
-      const items = textToItems(text);
-      if (!items.length){ status("Nothing"); return; }
-
-      insertItemsBelowFocused(items);
-      status("Pasted");
-    }
-
-    // -----------------------------
     // Wire up UI
     // -----------------------------
+    uiToggleTitle.addEventListener("click", toggleUiMode);
+
     tabActive.addEventListener("click", () => setView("active"));
     tabArchive.addEventListener("click", () => setView("archive"));
 
@@ -1316,30 +1311,6 @@
 
     btnCopyTasks.addEventListener("click", doCopy);
     btnPasteTasks.addEventListener("click", doPaste);
-
-    // Keyboard shortcuts (minimal):
-    // Ctrl/Cmd+Shift+C (copy block) / Ctrl/Cmd+Shift+V (paste block)
-    document.addEventListener("keydown", async (e) => {
-      const isMac = navigator.platform.toUpperCase().includes("MAC");
-      const mod = isMac ? e.metaKey : e.ctrlKey;
-
-      const el = document.activeElement;
-      const inTask = el && el.classList && el.classList.contains("task");
-
-      if (!mod || !e.shiftKey || !inTask) return;
-
-      // Allow normal copy if user selected text
-      if (e.key.toLowerCase() === "c"){
-        if (el.selectionStart !== el.selectionEnd) return;
-        e.preventDefault();
-        doCopy();
-      }
-
-      if (e.key.toLowerCase() === "v"){
-        e.preventDefault();
-        doPaste();
-      }
-    });
 
     btnExportJson.addEventListener("click", exportJson);
     btnImportJson.addEventListener("click", () => fileJson.click());
