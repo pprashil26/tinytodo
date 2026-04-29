@@ -1,4 +1,7 @@
-<!doctype html><!doctype-8" />
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tiny Todo</title>
 
@@ -57,12 +60,14 @@
       align-items:center;
       gap:8px;
     }
+
+    /* Title toggles Compact Mode (no extra button) */
     .title{
       font-weight: 700;
       font-size: 13px;
       letter-spacing: 0.2px;
       white-space: nowrap;
-      cursor: pointer;          /* tap/click toggles compact/full */
+      cursor: pointer;
       user-select: none;
     }
 
@@ -253,7 +258,6 @@
 
     .file{ display:none; }
 
-    /* Clipboard fallback textarea */
     #clipFallback{
       position: fixed;
       left: -9999px;
@@ -264,14 +268,13 @@
       pointer-events: none;
     }
 
-    /* -----------------------------
-       Compact UI mode
-       Keep only: page dropdown, + Page, Rename
-       ----------------------------- */
+    /* --------- Compact UI Mode ---------
+       Hide everything except:
+       page dropdown, +Page, Rename
+    ------------------------------------ */
     body.compact-ui .tabs{ display:none !important; }
     body.compact-ui #deletePage{ display:none !important; }
     body.compact-ui .bar{ display:none !important; }
-
     body.compact-ui .cell.move{ display:none !important; }
     body.compact-ui .row{ grid-template-columns: var(--check-col) 1fr; }
 
@@ -305,7 +308,7 @@
 <body>
   <header>
     <div class="header-inner">
-      <div class="title" id="uiToggleTitle" title="Tap to show/hide controls">Tiny Todo</div>
+      <div class="title" id="uiToggleTitle" title="Tap to hide/show controls">Tiny Todo</div>
 
       <div class="header-right">
         <select class="page-select" id="pageSelect" title="Pages"></select>
@@ -351,7 +354,6 @@
       <input class="file" id="fileJson" type="file" accept="application/json" />
       <input class="file" id="fileTxt" type="file" accept="text/plain,.txt" />
       <input class="file" id="fileAll" type="file" accept="application/json" />
-
       <textarea id="clipFallback" aria-hidden="true"></textarea>
 
       <div class="small" id="status"></div>
@@ -359,18 +361,24 @@
   </div>
 
   <script>
+    // -----------------------------
+    // Storage keys
+    // -----------------------------
     const KEY_V3 = "tiny_todo_v3_pages";
     const KEY_V2 = "tiny_todo_v2";
     const KEY_V1 = "tiny_todo_v1";
     const UI_KEY = "tiny_todo_ui_compact";
     const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
+    // UI state
+    let uiCompact = (localStorage.getItem(UI_KEY) === "1");
+    applyUiMode();
+
+    // Notebook model:
+    // { version, activePageId, pages: { [pageId]: { id, name, items, sortUndo } } }
     let notebook = loadNotebook() || seedNotebook();
     let view = "active";
     let focusedId = null;
-
-    let uiCompact = (localStorage.getItem(UI_KEY) === "1");
-    applyUiMode();
 
     // DOM
     const grid = document.getElementById("grid");
@@ -412,10 +420,21 @@
     function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
     function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
+    function applyUiMode(){
+      document.body.classList.toggle("compact-ui", uiCompact);
+      uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
+    }
+    function toggleUiMode(){
+      uiCompact = !uiCompact;
+      localStorage.setItem(UI_KEY, uiCompact ? "1" : "0");
+      applyUiMode();
+    }
+
+    // Seed data
     function seedItems(){
       return [
         { id: uid(), text: "Task", done: false, indent: 0, archived: false, archivedAt: null },
-        { id: uid(), text: "Subtask (Tab to indent)", done: false, indent: 1, archived: false, archivedAt: null },
+        { id: uid(), text: "Subtask (Tab to indent)", done: false, indent: 1, archived: false, archivedAt: null }
       ];
     }
 
@@ -447,7 +466,7 @@
       if (!nb.pages || typeof nb.pages !== "object") return null;
 
       const pageIds = Object.keys(nb.pages);
-      if (pageIds.length === 0) return null;
+      if (!pageIds.length) return null;
 
       for (const pid of pageIds){
         const p = nb.pages[pid];
@@ -466,30 +485,17 @@
       if (!nb.activePageId || !nb.pages[nb.activePageId]){
         nb.activePageId = pageIds[0];
       }
+
       nb.version = 1;
       return nb;
     }
 
-    // UI compact toggle
-    function applyUiMode(){
-      document.body.classList.toggle("compact-ui", uiCompact);
-      uiToggleTitle.title = uiCompact ? "Tap to show controls" : "Tap to hide controls";
-    }
-    function toggleUiMode(){
-      uiCompact = !uiCompact;
-      localStorage.setItem(UI_KEY, uiCompact ? "1" : "0");
-      applyUiMode();
-    }
-
-    // Load / Save with Migration
+    // Load / migrate
     function loadNotebook(){
       try{
         const raw3 = localStorage.getItem(KEY_V3);
-        if (raw3){
-          return ensureNotebookShape(JSON.parse(raw3));
-        }
+        if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-        // migrate v2 -> v3
         const raw2 = localStorage.getItem(KEY_V2);
         if (raw2){
           const items = normalizeItems(JSON.parse(raw2));
@@ -497,15 +503,12 @@
           const nb = ensureNotebookShape({
             version: 1,
             activePageId: pid,
-            pages: {
-              [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null }
-            }
+            pages: { [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null } }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
           return nb;
         }
 
-        // migrate v1 -> v3
         const raw1 = localStorage.getItem(KEY_V1);
         if (raw1){
           const parsed1 = JSON.parse(raw1);
@@ -522,9 +525,7 @@
             const nb = ensureNotebookShape({
               version: 1,
               activePageId: pid,
-              pages: {
-                [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null }
-              }
+              pages: { [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null } }
             });
             localStorage.setItem(KEY_V3, JSON.stringify(nb));
             return nb;
@@ -557,8 +558,6 @@
     // Pages UI
     function rebuildPageSelect(){
       const pages = Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
-      const currentId = notebook.activePageId;
-
       pageSelect.innerHTML = "";
       for (const p of pages){
         const opt = document.createElement("option");
@@ -566,8 +565,7 @@
         opt.textContent = p.name;
         pageSelect.appendChild(opt);
       }
-      pageSelect.value = currentId;
-
+      pageSelect.value = notebook.activePageId;
       btnDeletePage.disabled = Object.keys(notebook.pages).length <= 1;
     }
 
@@ -607,9 +605,7 @@
     }
 
     function deletePage(){
-      const ids = Object.keys(notebook.pages);
-      if (ids.length <= 1) return;
-
+      if (Object.keys(notebook.pages).length <= 1) return;
       const p = currentPage();
       const ok = confirm(`Delete page "${p.name}"?\nThis permanently removes all tasks in it.`);
       if (!ok) return;
@@ -618,7 +614,6 @@
       const remaining = Object.keys(notebook.pages);
       notebook.activePageId = remaining[0];
       focusedId = null;
-
       saveNotebook();
       setView("active");
       render(null);
@@ -655,12 +650,11 @@
 
     function render(tryFocusId){
       const p = currentPage();
-      const vis = visibleItems();
       grid.innerHTML = "";
 
+      const vis = visibleItems();
       if (view === "active" && vis.length === 0){
-        const newItem = { id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null };
-        p.items.push(newItem);
+        p.items.push({ id: uid(), text: "", done:false, indent:0, archived:false, archivedAt:null });
         saveNotebook();
       }
 
@@ -703,6 +697,7 @@
         moveBtn.textContent = "→";
         moveBtn.title = "Move to Today";
         moveBtn.setAttribute("aria-label", "Move to Today");
+
         const canMove = (view === "active") && !isTodayPage;
         moveBtn.disabled = !canMove;
         moveBtn.addEventListener("click", () => { if (canMove) moveBlockToToday(it.id); });
@@ -1116,7 +1111,7 @@
       status("Pasted");
     }
 
-    // Export / Import (page) + Backup/Restore ALL
+    // Export / Import / Backup / Restore
     function downloadBlob(blob, filename){
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -1155,7 +1150,6 @@
       const lines = [];
       const active = p.items.filter(x => !x.archived);
       const archived = p.items.filter(x => x.archived);
-
       for (const it of active) lines.push(formatTxtLine(it));
       if (archived.length){
         lines.push(ARCHIVE_MARKER);
@@ -1168,7 +1162,6 @@
       const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
       let inArchive = false;
       const out = [];
-
       for (let line of rawLines){
         if (!line || line.trim() === "") continue;
         if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
@@ -1187,7 +1180,6 @@
           done = (m[1].toLowerCase() === "x");
           textPart = m[2] ?? "";
         }
-
         out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
       }
 
@@ -1279,7 +1271,7 @@
       if (!mod || !e.shiftKey || !inTask) return;
 
       if (e.key.toLowerCase() === "c"){
-        if (el.selectionStart !== el.selectionEnd) return; // normal copy if selection
+        if (el.selectionStart !== el.selectionEnd) return;
         e.preventDefault();
         doCopy();
       }
@@ -1329,5 +1321,3 @@
   </script>
 </body>
 </html>
-<html lang="en">
-<head>
