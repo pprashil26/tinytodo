@@ -700,7 +700,7 @@
   }
 
   /* -------------------------
-     ✅ FIXED: pages are keyed by pageId
+     ✅ FIX: pages are keyed by pageId (computed property)
      ------------------------- */
   function seedItems(){
     return [
@@ -715,7 +715,7 @@
       version: 1,
       activePageId: pid,
       pages: {
-        { id: pid, name: "Personal", category: UNCATEGORIZED, items: seedItems(), sortUndo: null }
+        [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: seedItems(), sortUndo: null }
       }
     };
   }
@@ -767,7 +767,7 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-      // ✅ FIXED migration v2 -> v3
+      // ✅ FIX migration v2 -> v3
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -776,14 +776,14 @@
           version: 1,
           activePageId: pid,
           pages: {
-            { id: pid, name: "Personal", category: UNCATEGORIZED, items: items.length ? items : seedItems(), sortUndo: null }
+            [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: items.length ? items : seedItems(), sortUndo: null }
           }
         });
         localStorage.setItem(KEY_V3, JSON.stringify(nb));
         return nb;
       }
 
-      // ✅ FIXED migration v1 -> v3
+      // ✅ FIX migration v1 -> v3
       const raw1 = localStorage.getItem(KEY_V1);
       if (raw1){
         const parsed1 = JSON.parse(raw1);
@@ -801,7 +801,7 @@
             version: 1,
             activePageId: pid,
             pages: {
-              { id: pid, name: "Personal", category: UNCATEGORIZED, items: migrated.length ? migrated : seedItems(), sortUndo: null }
+              [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: migrated.length ? migrated : seedItems(), sortUndo: null }
             }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
@@ -1304,23 +1304,48 @@
     const mark = it.done ? "[x] " : "[ ] ";
     return tabs + mark + (it.text || "");
   }
+  function getActiveList(){
+    return currentPage().items.filter(it => !it.archived);
+  }
+  function getBlockFromActive(startId){
+    const list = getActiveList();
+    const startIdx = list.findIndex(x => x.id === startId);
+    if (startIdx < 0) return [];
+    const startIndent = Number(list[startIdx].indent || 0);
+    const block = [list[startIdx]];
+    for (let i = startIdx + 1; i < list.length; i++){
+      const ind = Number(list[i].indent || 0);
+      if (ind > startIndent) block.push(list[i]);
+      else break;
+    }
+    return block;
+  }
   function blockToText(block){
     return block.map(formatTxtLine).join("\n") + "\n";
   }
-  async function doCopyById(rowId){
-    if (view !== "active"){ toast("Active only"); return; }
-    const block = getBlockFromActive(rowId);
-    if (!block.length){ toast("Nothing"); return; }
-    const ok = await writeClipboard(blockToText(block));
-    toast(ok ? "Copied" : "Copy failed");
-  }
-  async function doPasteBelowId(rowId){
-    if (view !== "active"){ toast("Active only"); return; }
-    const text = await readClipboard();
-    const items = textToItems(text);
-    if (!items.length){ toast("Nothing"); return; }
-    insertItemsBelowId(rowId, items);
-    toast("Pasted");
+  function textToItems(text){
+    const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    const out = [];
+    for (let line of lines){
+      if (!line || line.trim() === "") continue;
+
+      let indent = 0;
+      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+      indent = clamp(indent, 0, MAX_INDENT);
+
+      const trimmed = line.trimStart();
+      let done = false;
+      let textPart = trimmed;
+
+      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if (m){
+        done = (m[1].toLowerCase() === "x");
+        textPart = m[2] ?? "";
+      }
+      out.push({ id: uid(), text: String(textPart), done, indent, archived:false, archivedAt:null });
+    }
+    return out;
   }
   function insertItemsBelowId(anchorId, newItems){
     if (!newItems.length) return;
@@ -1348,7 +1373,23 @@
     render(focusedId);
   }
 
-  // --- Search box wiring (kept minimal) ---
+  async function doCopyById(rowId){
+    if (view !== "active"){ toast("Active only"); return; }
+    const block = getBlockFromActive(rowId);
+    if (!block.length){ toast("Nothing"); return; }
+    const ok = await writeClipboard(blockToText(block));
+    toast(ok ? "Copied" : "Copy failed");
+  }
+  async function doPasteBelowId(rowId){
+    if (view !== "active"){ toast("Active only"); return; }
+    const text = await readClipboard();
+    const items = textToItems(text);
+    if (!items.length){ toast("Nothing"); return; }
+    insertItemsBelowId(rowId, items);
+    toast("Pasted");
+  }
+
+  // Search box wiring
   pageSearch.addEventListener("input", () => {
     railQuery = pageSearch.value || "";
     rebuildRail();
@@ -1367,7 +1408,6 @@
   toggleUi.addEventListener("click", toggleUiMode);
   newPageBtn.addEventListener("click", newPage);
   todayBtn.addEventListener("click", goToTodayPage);
-
   addRowBtn.addEventListener("click", addRow);
 
   // Init
