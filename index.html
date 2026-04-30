@@ -1,8 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<headinitial-scale=1"/><head>
 <title>Tiny Todo</title>
 
 <style>
@@ -70,7 +68,7 @@ header{position:sticky;top:0;z-index:20;background:rgba(244,244,244,.9);backdrop
 details.group{border-top:1px solid rgba(0,0,0,.08);padding-top:8px;margin-top:8px}
 details.group:first-child{border-top:none;padding-top:0;margin-top:0}
 
-/* ✅ CHANGED: left panel headings now match right rail subtle grey */
+/* Left panel headings match right panel subtle grey */
 summary.group-sum{
   list-style:none;
   cursor:pointer;
@@ -78,7 +76,7 @@ summary.group-sum{
   align-items:center;
   justify-content:space-between;
   user-select:none;
-  color: var(--rail-head-color); /* rgba(0,0,0,.42) */
+  color: var(--rail-head-color);
   font-weight:600;
 }
 summary.group-sum::-webkit-details-marker{display:none}
@@ -211,6 +209,8 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
           <button type="button" id="importTxtBtn">Import TXT</button>
           <button type="button" id="backupAllBtn">Backup ALL</button>
           <button type="button" id="restoreAllBtn">Restore ALL</button>
+          <button type="button" id="backupAllTxtBtn">Backup ALL (TXT)</button>
+          <button type="button" id="restoreAllTxtBtn">Restore ALL (TXT)</button>
         </div>
       </details>
 
@@ -250,6 +250,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     <input id="fileJson" type="file" accept="application/json">
     <input id="fileTxt" type="file" accept="text/plain,.txt">
     <input id="fileAll" type="file" accept="application/json">
+    <input id="fileAllTxt" type="file" accept="text/plain,.txt">
     <textarea id="clipFallback" aria-hidden="true"
       style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
   </main>
@@ -290,6 +291,8 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const importTxtBtn=document.getElementById("importTxtBtn");
   const backupAllBtn=document.getElementById("backupAllBtn");
   const restoreAllBtn=document.getElementById("restoreAllBtn");
+  const backupAllTxtBtn=document.getElementById("backupAllTxtBtn");
+  const restoreAllTxtBtn=document.getElementById("restoreAllTxtBtn");
 
   const archiveDoneBtn=document.getElementById("archiveDoneBtn");
   const restoreFocusedBtn=document.getElementById("restoreFocusedBtn");
@@ -303,6 +306,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const fileJson=document.getElementById("fileJson");
   const fileTxt=document.getElementById("fileTxt");
   const fileAll=document.getElementById("fileAll");
+  const fileAllTxt=document.getElementById("fileAllTxt");
   const clipFallback=document.getElementById("clipFallback");
 
   let uiCompact=(localStorage.getItem(UI_KEY)==="1");
@@ -410,7 +414,11 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   }
   function seedNotebook(){
     const pid=uid();
-    return {version:1,activePageId:pid,pages:{[pid]:{id:pid,name:"Personal",category:UNCATEGORIZED,items:seedItems(),sortUndo:null}}};
+    return {
+      version:1,
+      activePageId:pid,
+      pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:seedItems(),sortUndo:null} }
+    };
   }
   function normalizeItems(raw){
     if(!Array.isArray(raw)) return [];
@@ -450,7 +458,11 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       if(raw2){
         const items=normalizeItems(JSON.parse(raw2));
         const pid=uid();
-        const nb=ensureNotebookShape({version:1,activePageId:pid,pages:{[pid]:{id:pid,name:"Personal",category:UNCATEGORIZED,items:items.length?items:seedItems(),sortUndo:null}}});
+        const nb=ensureNotebookShape({
+          version:1,
+          activePageId:pid,
+          pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:items.length?items:seedItems(),sortUndo:null} }
+        });
         localStorage.setItem(KEY_V3,JSON.stringify(nb));
         return nb;
       }
@@ -459,9 +471,21 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       if(raw1){
         const parsed1=JSON.parse(raw1);
         if(Array.isArray(parsed1)){
-          const migrated=parsed1.map(x=>({id:x.id||uid(),text:String(x.text||""),done:!!x.done,important:false,indent:clamp(Number(x.indent||0),0,MAX_INDENT),archived:false,archivedAt:null}));
+          const migrated=parsed1.map(x=>({
+            id:x.id||uid(),
+            text:String(x.text||""),
+            done:!!x.done,
+            important:false,
+            indent:clamp(Number(x.indent||0),0,MAX_INDENT),
+            archived:false,
+            archivedAt:null
+          }));
           const pid=uid();
-          const nb=ensureNotebookShape({version:1,activePageId:pid,pages:{[pid]:{id:pid,name:"Personal",category:UNCATEGORIZED,items:migrated.length?migrated:seedItems(),sortUndo:null}}});
+          const nb=ensureNotebookShape({
+            version:1,
+            activePageId:pid,
+            pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:migrated.length?migrated:seedItems(),sortUndo:null} }
+          });
           localStorage.setItem(KEY_V3,JSON.stringify(nb));
           return nb;
         }
@@ -469,6 +493,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       return null;
     }catch(e){ return null; }
   }
+
   function saveNotebook(){
     localStorage.setItem(KEY_V3,JSON.stringify(notebook));
     rebuildRail();
@@ -908,11 +933,53 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     try{ return await navigator.clipboard.readText(); }
     catch(e){ return prompt("Paste tasks text here:")||""; }
   }
+
+  // Per-page TXT format helpers (existing)
   function formatTxtLine(it){
     const tabs="\t".repeat(clamp(it.indent,0,MAX_INDENT));
     const mark=it.done?"[x] ":"[ ] ";
     return tabs+mark+(it.text||"");
   }
+
+  function toPlainTextForPage(page){
+    const lines=[];
+    const active=(page.items||[]).filter(x=>!x.archived);
+    const archived=(page.items||[]).filter(x=>x.archived);
+    for(const it of active) lines.push(formatTxtLine(it));
+    if(archived.length){
+      lines.push(ARCHIVE_MARKER);
+      for(const it of archived) lines.push(formatTxtLine(it));
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  function fromPlainTextToItems(text){
+    const rawLines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+    let inArchive=false;
+    const out=[];
+    for(let line of rawLines){
+      if(!line || line.trim()==="") continue;
+      if(line.trim()===ARCHIVE_MARKER){ inArchive=true; continue; }
+
+      let indent=0;
+      while(line.startsWith("\t")){ indent++; line=line.slice(1); }
+      while(line.startsWith("  ")){ indent++; line=line.slice(2); }
+      indent=clamp(indent,0,MAX_INDENT);
+
+      const trimmed=line.trimStart();
+      let done=false, textPart=trimmed;
+      const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if(m){ done=(m[1].toLowerCase()==="x"); textPart=m[2]??""; }
+
+      out.push({id:uid(),text:String(textPart),done,important:false,indent,archived:inArchive,archivedAt:inArchive?Date.now():null});
+    }
+    if(out.filter(x=>!x.archived).length===0){
+      out.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
+    }
+    return out;
+  }
+
+  // Copy/paste blocks in app (uses active-only)
   function getActiveList(){ return currentPage().items.filter(it=>!it.archived); }
   function getBlockFromActive(startId){
     const list=getActiveList();
@@ -927,26 +994,33 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     return block;
   }
   function blockToText(block){ return block.map(formatTxtLine).join("\n")+"\n"; }
+
   function textToItems(text){
-    const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+    // paste items: treat as active tasks, important not encoded here
+    const raw=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
     const out=[];
-    for(let line of lines){
-      if(!line||line.trim()==="") continue;
+    for(let line of raw){
+      if(!line || line.trim()==="") continue;
+
       let indent=0;
       while(line.startsWith("\t")){ indent++; line=line.slice(1); }
       while(line.startsWith("  ")){ indent++; line=line.slice(2); }
       indent=clamp(indent,0,MAX_INDENT);
+
       const trimmed=line.trimStart();
       let done=false, textPart=trimmed;
       const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
       if(m){ done=(m[1].toLowerCase()==="x"); textPart=m[2]??""; }
+
       out.push({id:uid(),text:String(textPart),done,important:false,indent,archived:false,archivedAt:null});
     }
     return out;
   }
+
   function insertItemsBelowId(anchorId,newItems){
     if(!newItems.length) return;
     const p=currentPage();
+
     let insertIndex=p.items.findIndex(x=>x.archived);
     if(insertIndex<0) insertIndex=p.items.length;
 
@@ -969,6 +1043,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     focusedId=newItems[0].id;
     render(focusedId);
   }
+
   async function doCopyById(rowId){
     if(view!=="active"){ toast("Active only"); return; }
     const block=getBlockFromActive(rowId);
@@ -1003,7 +1078,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
   });
 
-  // Export/Import/Backup/Restore
+  // Export / Import per-page
   function downloadBlob(blob,filename){
     const a=document.createElement("a");
     a.href=URL.createObjectURL(blob);
@@ -1014,6 +1089,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   function safeName(name){
     return String(name||"page").trim().replace(/[^\w\-]+/g,"_").slice(0,40) || "page";
   }
+
   function exportJson(){
     const p=currentPage();
     const blob=new Blob([JSON.stringify(p.items,null,2)],{type:"application/json"});
@@ -1035,52 +1111,16 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast("Imported JSON");
   }
 
-  function toPlainText(){
-    const p=currentPage();
-    const lines=[];
-    const active=p.items.filter(x=>!x.archived);
-    const archived=p.items.filter(x=>x.archived);
-    for(const it of active) lines.push(formatTxtLine(it));
-    if(archived.length){
-      lines.push(ARCHIVE_MARKER);
-      for(const it of archived) lines.push(formatTxtLine(it));
-    }
-    return lines.join("\n")+"\n";
-  }
-  function fromPlainText(text){
-    const raw=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
-    let inArchive=false;
-    const out=[];
-    for(let line of raw){
-      if(!line||line.trim()==="") continue;
-      if(line.trim()===ARCHIVE_MARKER){ inArchive=true; continue; }
-
-      let indent=0;
-      while(line.startsWith("\t")){ indent++; line=line.slice(1); }
-      while(line.startsWith("  ")){ indent++; line=line.slice(2); }
-      indent=clamp(indent,0,MAX_INDENT);
-
-      const trimmed=line.trimStart();
-      let done=false, textPart=trimmed;
-      const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-      if(m){ done=(m[1].toLowerCase()==="x"); textPart=m[2]??""; }
-      out.push({id:uid(),text:String(textPart),done,important:false,indent,archived:inArchive,archivedAt:inArchive?Date.now():null});
-    }
-    if(out.filter(x=>!x.archived).length===0){
-      out.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
-    }
-    return out;
-  }
   function exportTxt(){
     const p=currentPage();
-    const blob=new Blob([toPlainText()],{type:"text/plain;charset=utf-8"});
+    const blob=new Blob([toPlainTextForPage(p)],{type:"text/plain;charset=utf-8"});
     downloadBlob(blob,`${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
     toast("Exported TXT");
   }
   async function importTxtFile(f){
     const p=currentPage();
     const text=await f.text();
-    p.items=fromPlainText(text);
+    p.items=fromPlainTextToItems(text);
     p.sortUndo=null;
     saveNotebook();
     focusedId=p.items.find(x=>!x.archived)?.id || p.items[0]?.id || null;
@@ -1088,6 +1128,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast("Imported TXT");
   }
 
+  // Backup / Restore ALL JSON (existing)
   function backupAll(){
     const payload={format:"tiny-todo-backup",exportedAt:new Date().toISOString(),notebook};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
@@ -1110,6 +1151,189 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     setView("active");
     render(null);
     toast("Restored ALL");
+  }
+
+  /* =========================================================
+     NEW: Backup ALL (TXT) + Restore ALL (TXT)
+     - Includes Active + Archived
+     - Preserves important by encoding prefix "‼️ "
+     ========================================================= */
+  const TXT_ALL_MAGIC = "# tiny-todo-backup-txt v1";
+  const PAGE_HEADER_PREFIX = "=== PAGE:";
+
+  function formatTxtLineAll(it){
+    const tabs="\t".repeat(clamp(it.indent,0,MAX_INDENT));
+    const mark=it.done?"[x] ":"[ ] ";
+    const imp = it.important ? "‼️ " : "";
+    return tabs + mark + imp + (it.text || "");
+  }
+
+  function toPlainTextForPageAll(page){
+    const lines=[];
+    const items=page.items||[];
+    const active=items.filter(x=>!x.archived);
+    const archived=items.filter(x=>x.archived);
+
+    for(const it of active) lines.push(formatTxtLineAll(it));
+    if(archived.length){
+      lines.push(ARCHIVE_MARKER);
+      for(const it of archived) lines.push(formatTxtLineAll(it));
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  function backupAllTxt(){
+    const nowIso=new Date().toISOString();
+    const lines=[];
+    lines.push(TXT_ALL_MAGIC);
+    lines.push(`# exportedAt: ${nowIso}`);
+    lines.push("");
+
+    // stable order: category then name
+    const pages=Object.values(notebook.pages).slice().sort((a,b)=>{
+      const ac=normalizeCategory(a.category).localeCompare(normalizeCategory(b.category));
+      if(ac!==0) return ac;
+      return String(a.name||"").localeCompare(String(b.name||""));
+    });
+
+    for(const p of pages){
+      const cat=normalizeCategory(p.category);
+      const name=String(p.name||"Untitled").trim() || "Untitled";
+      lines.push(`=== PAGE: ${cat} :: ${name} ===`);
+      lines.push(toPlainTextForPageAll(p).trimEnd());
+      lines.push(""); // blank line between pages
+    }
+
+    const blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
+    downloadBlob(blob,`tiny-todo-backup-${new Date().toISOString().slice(0,10)}.txt`);
+    toast("Backup ALL (TXT) exported");
+  }
+
+  function parsePageHeader(line){
+    // line format: === PAGE: Cat :: Name ===
+    let s=line.trim();
+    s=s.replace(/^===\s*PAGE:\s*/i,"").replace(/\s*===$/,"").trim();
+    // support both "Cat :: Name" and "Cat::Name"
+    let cat=UNCATEGORIZED, name=s;
+    const sep = s.includes(" :: ") ? " :: " : (s.includes("::") ? "::" : null);
+    if(sep){
+      const idx=s.indexOf(sep);
+      const left=s.slice(0,idx).trim();
+      const right=s.slice(idx+sep.length).trim();
+      cat=normalizeCategory(left);
+      name=right || "Untitled";
+    }else{
+      cat=UNCATEGORIZED;
+      name=s || "Untitled";
+    }
+    return {category:cat,name};
+  }
+
+  function parseItemsFromAllTxt(pageText){
+    const rawLines=pageText.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+    let inArchive=false;
+    const out=[];
+    for(let line of rawLines){
+      if(!line || line.trim()==="") continue;
+      if(line.trim()===ARCHIVE_MARKER){ inArchive=true; continue; }
+
+      let indent=0;
+      while(line.startsWith("\t")){ indent++; line=line.slice(1); }
+      while(line.startsWith("  ")){ indent++; line=line.slice(2); }
+      indent=clamp(indent,0,MAX_INDENT);
+
+      const trimmed=line.trimStart();
+      let done=false;
+      let textPart=trimmed;
+
+      const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if(m){
+        done=(m[1].toLowerCase()==="x");
+        textPart=m[2]??"";
+      }
+
+      let important=false;
+      let finalText=String(textPart||"");
+      if(finalText.startsWith("‼️")){
+        important=true;
+        finalText=finalText.replace(/^‼️\s*/,"");
+      }
+
+      out.push({
+        id:uid(),
+        text:finalText,
+        done,
+        important,
+        indent,
+        archived:inArchive,
+        archivedAt:inArchive?Date.now():null
+      });
+    }
+
+    if(out.filter(x=>!x.archived).length===0){
+      out.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
+    }
+    return out;
+  }
+
+  async function restoreAllTxtFromFile(f){
+    const text=await f.text();
+    const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+
+    // quick validation: allow missing magic, but warn
+    const hasMagic = lines.some(l=>l.trim()===TXT_ALL_MAGIC);
+    if(!hasMagic){
+      const ok = confirm("This file doesn't look like a Tiny Todo TXT backup.\nTry to restore anyway?");
+      if(!ok) return;
+    }
+
+    const pages = {};
+    let currentHeader=null;
+    let buffer=[];
+
+    function flush(){
+      if(!currentHeader) return;
+      const {category,name} = currentHeader;
+      const pid = uid();
+      const items = parseItemsFromAllTxt(buffer.join("\n"));
+      pages[pid] = { id: pid, name, category, items, sortUndo: null };
+      buffer=[];
+      currentHeader=null;
+    }
+
+    for(const line of lines){
+      const t=line.trim();
+      if(t.startsWith("#")) continue; // metadata lines
+      if(t.toUpperCase().startsWith(PAGE_HEADER_PREFIX)){
+        flush();
+        currentHeader = parsePageHeader(t);
+        continue;
+      }
+      // accumulate
+      if(currentHeader) buffer.push(line);
+    }
+    flush();
+
+    if(Object.keys(pages).length===0){
+      throw new Error("No pages found in TXT backup.");
+    }
+
+    const ok = confirm("Restore ALL (TXT) will replace your current pages and tasks. Continue?");
+    if(!ok) return;
+
+    notebook = ensureNotebookShape({
+      version:1,
+      activePageId: Object.keys(pages)[0],
+      pages
+    });
+
+    view="active";
+    focusedId=null;
+    saveNotebook();
+    rebuildRail();
+    setView("active");
+    render(null);
+    toast("Restored ALL (TXT)");
   }
 
   // Rail collapse persistence
@@ -1284,6 +1508,15 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
   }
 
+  function goToItem(pageId,itemId,archived){
+    if(!notebook.pages[pageId]) return;
+    notebook.activePageId=pageId;
+    focusedId=itemId;
+    view=archived?"archive":"active";
+    saveNotebook();
+    render(itemId);
+  }
+
   function computeSearchResults(tokens){
     const pagesMatched=Object.values(notebook.pages).filter(p=>pageMatchesTokens(p,tokens));
     const taskHits=[];
@@ -1335,9 +1568,11 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     });
   }
 
+  // wire buttons
   toggleUi.addEventListener("click",toggleUiMode);
   newPageBtn.addEventListener("click",newPage);
   todayBtn.addEventListener("click",goToTodayPage);
+
   addRowBtn.addEventListener("click",addRow);
   sortBtn.addEventListener("click",sortOrUnsort);
 
@@ -1349,6 +1584,9 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 
   backupAllBtn.addEventListener("click",backupAll);
   wireFileInput(restoreAllBtn,fileAll,restoreAllFromFile);
+
+  backupAllTxtBtn.addEventListener("click",backupAllTxt);
+  wireFileInput(restoreAllTxtBtn,fileAllTxt,restoreAllTxtFromFile);
 
   archiveDoneBtn.addEventListener("click",archiveDone);
   restoreFocusedBtn.addEventListener("click",restoreFocused);
@@ -1369,3 +1607,4 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 </script>
 </body>
 </html>
+<meta charset="utf-8"/>
