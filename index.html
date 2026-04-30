@@ -535,7 +535,6 @@
       style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
   </main>
 
-  <!-- ✅ Grouped + collapsible pages rail with rename icon -->
   <aside class="pages-rail" aria-label="Pages rail">
     <div class="rail-title">Pages</div>
     <div class="rail-groups" id="pagesRail"></div>
@@ -672,7 +671,7 @@
 
   // Rename input:
   // - If contains "::": set category + name
-  // - Else: rename only, keep category (Option A)
+  // - Else: rename only, keep category
   function parseRenameInput(raw, currentCategory){
     const s = String(raw || "").trim();
     if (!s) return null;
@@ -688,14 +687,38 @@
   }
 
   /* =========================
-     Search (category + page name)
+     FULL-TEXT SEARCH (B + AND)
+     - matches category + name + ALL tasks (active + archived)
+     - AND: all words must exist somewhere in page text
      ========================= */
   function norm(s){ return String(s || "").toLowerCase(); }
 
-  function pageMatchesQuery(p, q){
-    if (!q) return true;
-    const hay = (norm(p.category) + " " + norm(p.name));
-    return hay.includes(q);
+  function tokenize(q){
+    const s = norm(q).trim();
+    if (!s) return [];
+    // split on whitespace; AND semantics
+    return s.split(/\s+/).filter(Boolean);
+  }
+
+  function pageHaystack(p){
+    // Build a searchable string containing:
+    // category + name + all tasks (active + archived)
+    let h = (p.category || "") + " " + (p.name || "");
+    if (Array.isArray(p.items)){
+      for (const it of p.items){
+        if (it && it.text) h += " " + it.text;
+      }
+    }
+    return norm(h);
+  }
+
+  function pageMatchesTokens(p, tokens){
+    if (!tokens || tokens.length === 0) return true;
+    const hay = pageHaystack(p);
+    for (const t of tokens){
+      if (!hay.includes(t)) return false;
+    }
+    return true;
   }
 
   /* =========================
@@ -766,7 +789,7 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-      // migrate v2 -> v3
+      // migrate v2 -> v3 (single list)
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -823,7 +846,7 @@
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
   /* =========================
-     Pages Rail (grouped, collapsible, searchable) + Rename icon
+     Pages Rail (grouped, collapsible, FULL-TEXT searchable) + Rename icon
      ========================= */
   function getSortedPages(){
     return Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
@@ -844,19 +867,10 @@
   }
 
   function rebuildPagesRail(){
-    const q = norm(railQuery);
+    const tokens = tokenize(railQuery);
     const pagesAll = getSortedPages();
-    const pages = pagesAll.filter(p => pageMatchesQuery(p, q));
+    const pages = pagesAll.filter(p => pageMatchesTokens(p, tokens));
 
-    // Group by category
-    const groups = new Map();
-    for (const p of pages){
-      const cat = normalizeCategory(p.category);
-      if (!groups.has(cat)) groups.set(cat, []);
-      groups.get(cat).push(p);
-    }
-
-    // If no matches, show empty message
     pagesRail.innerHTML = "";
     if (pages.length === 0){
       const div = document.createElement("div");
@@ -866,6 +880,14 @@
       return;
     }
 
+    // Group by category
+    const groups = new Map();
+    for (const p of pages){
+      const cat = normalizeCategory(p.category);
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(p);
+    }
+
     // Category sort (Uncategorized last)
     const cats = Array.from(groups.keys()).sort((a,b) => {
       if (a === UNCATEGORIZED && b !== UNCATEGORIZED) return 1;
@@ -873,13 +895,15 @@
       return a.localeCompare(b);
     });
 
+    const searching = tokens.length > 0;
+
     for (const cat of cats){
       const details = document.createElement("details");
       details.className = "rail-cat";
 
       // If searching: auto-open to show results.
       // If not searching: respect persisted state.
-      if (q){
+      if (searching){
         details.open = true;
       } else {
         if (!isCatClosed(cat)) details.open = true;
@@ -923,7 +947,7 @@
 
       // persist toggle state only when NOT searching
       details.addEventListener("toggle", () => {
-        if (q) return;
+        if (searching) return;
         setCatClosed(cat, !details.open);
       });
 
@@ -973,8 +997,6 @@
     p.category = parsed.category;
 
     saveNotebook();
-
-    // keep current page active; if renamed page is active, no change needed
     toast("Renamed");
   }
 
@@ -1008,7 +1030,7 @@
   }
 
   /* =========================
-     Render
+     Render tasks
      ========================= */
   function getItemById(id){
     return currentPage().items.find(x => x.id === id) || null;
@@ -1574,51 +1596,6 @@
     toast("Imported JSON");
   }
 
-  const ARCHIVE_MARKER = "--- ARCHIVE ---";
-
-  function toPlainText(){
-    const p = currentPage();
-    const lines = [];
-    const active = p.items.filter(x => !x.archived);
-    const archived = p.items.filter(x => x.archived);
-    for (const it of active) lines.push(formatTxtLine(it));
-    if (archived.length){
-      lines.push(ARCHIVE_MARKER);
-      for (const it of archived) lines.push(formatTxtLine(it));
-    }
-    return lines.join("\n") + "\n";
-  }
-
-  function fromPlainText(text){
-    const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    let inArchive = false;
-    const out = [];
-    for (let line of rawLines){
-      if (!line || line.trim() === "") continue;
-      if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
-
-      let indent = 0;
-      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
-      indent = clamp(indent, 0, MAX_INDENT);
-
-      const trimmed = line.trimStart();
-      let done = false;
-      let textPart = trimmed;
-
-      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-      if (m){
-        done = (m[1].toLowerCase() === "x");
-        textPart = m[2] ?? "";
-      }
-      out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
-    }
-    if (out.filter(x => !x.archived).length === 0){
-      out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
-    }
-    return out;
-  }
-
   function exportTxt(){
     const p = currentPage();
     const blob = new Blob([toPlainText()], { type:"text/plain;charset=utf-8" });
@@ -1664,23 +1641,58 @@
     toast("Restored ALL");
   }
 
-  /* =========================
-     Sort label update
-     ========================= */
-  function updateSortLabel(){
+  const ARCHIVE_MARKER = "--- ARCHIVE ---";
+  function toPlainText(){
     const p = currentPage();
-    sortBtn.textContent = (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length) ? "Unsort" : "Sort A→Z";
+    const lines = [];
+    const active = p.items.filter(x => !x.archived);
+    const archived = p.items.filter(x => x.archived);
+    for (const it of active) lines.push(formatTxtLine(it));
+    if (archived.length){
+      lines.push(ARCHIVE_MARKER);
+      for (const it of archived) lines.push(formatTxtLine(it));
+    }
+    return lines.join("\n") + "\n";
+  }
+  function fromPlainText(text){
+    const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    let inArchive = false;
+    const out = [];
+    for (let line of rawLines){
+      if (!line || line.trim() === "") continue;
+      if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
+
+      let indent = 0;
+      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+      indent = clamp(indent, 0, MAX_INDENT);
+
+      const trimmed = line.trimStart();
+      let done = false;
+      let textPart = trimmed;
+
+      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if (m){
+        done = (m[1].toLowerCase() === "x");
+        textPart = m[2] ?? "";
+      }
+      out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
+    }
+    if (out.filter(x => !x.archived).length === 0){
+      out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+    }
+    return out;
   }
 
   /* =========================
-     Search box behavior
+     Search box behavior (FULL-TEXT)
      - live filter
      - Esc clears
      - Enter: if exactly 1 match, jump
      ========================= */
   function getMatchingPageIds(q){
-    const qq = norm(q);
-    const pages = getSortedPages().filter(p => pageMatchesQuery(p, qq));
+    const tokens = tokenize(q);
+    const pages = getSortedPages().filter(p => pageMatchesTokens(p, tokens));
     return pages.map(p => p.id);
   }
 
@@ -1728,7 +1740,7 @@
   });
 
   /* =========================
-     Ctrl+Alt+T => Today (always Active)
+     Ctrl+Alt+T => Today
      ========================= */
   function findTodayPageId(){
     for (const [pid, pg] of Object.entries(notebook.pages)){
@@ -1766,7 +1778,7 @@
   });
 
   /* =========================
-     Wire events
+     Wire events + Init
      ========================= */
   toggleUi.addEventListener("click", toggleUiMode);
 
