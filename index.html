@@ -298,7 +298,7 @@
       color: rgba(0,0,0,0.45);
       font-size: 12px;
       line-height: 1.25;
-      white-space: normal;      /* ✅ full text visible */
+      white-space: normal;      /* full text visible */
       overflow: visible;
       text-overflow: unset;
       word-break: break-word;   /* wrap long strings */
@@ -534,6 +534,8 @@
     <span class="title" id="toggleUi" title="Tap to hide/show sidebar">Tiny Todo</span>
     <input id="pageSearch" class="page-search" type="text" placeholder="Search pages…" autocomplete="off" />
     <button type="button" id="newPage">+ Page</button>
+    <!-- ✅ NEW: Today shortcut next to +Page -->
+    <button type="button" id="todayBtn" title="Go to Today">Today</button>
   </div>
 </header>
 
@@ -623,6 +625,7 @@
   const pagesRail = document.getElementById("pagesRail");
 
   const newPageBtn = document.getElementById("newPage");
+  const todayBtn = document.getElementById("todayBtn"); // ✅ NEW
 
   const grid = document.getElementById("grid");
   const addRowBtn = document.getElementById("addRowBtn");
@@ -749,11 +752,8 @@
 
   /* =========================
      FULL-TEXT SEARCH (B + AND)
-     - matches category + name + ALL tasks (active + archived)
-     - AND: all words must exist somewhere in page, and results show matching task lines
      ========================= */
   function norm(s){ return String(s || "").toLowerCase(); }
-
   function tokenize(q){
     const s = norm(q).trim();
     if (!s) return [];
@@ -789,7 +789,7 @@
   }
 
   /* =========================
-     Data model (pages keyed by id, page.category exists)
+     Data model
      ========================= */
   function seedItems(){
     return [
@@ -804,7 +804,7 @@
       version: 1,
       activePageId: pid,
       pages: {
-        [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: seedItems(), sortUndo: null }
+        { id: pid, name: "Personal", category: UNCATEGORIZED, items: seedItems(), sortUndo: null }
       }
     };
   }
@@ -856,7 +856,6 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-      // migrate v2 -> v3 (single list)
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -865,14 +864,13 @@
           version: 1,
           activePageId: pid,
           pages: {
-            [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: items.length ? items : seedItems(), sortUndo: null }
+            { id: pid, name: "Personal", category: UNCATEGORIZED, items: items.length ? items : seedItems(), sortUndo: null }
           }
         });
         localStorage.setItem(KEY_V3, JSON.stringify(nb));
         return nb;
       }
 
-      // migrate v1 -> v3
       const raw1 = localStorage.getItem(KEY_V1);
       if (raw1){
         const parsed1 = JSON.parse(raw1);
@@ -890,7 +888,7 @@
             version: 1,
             activePageId: pid,
             pages: {
-              [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: migrated.length ? migrated : seedItems(), sortUndo: null }
+              { id: pid, name: "Personal", category: UNCATEGORIZED, items: migrated.length ? migrated : seedItems(), sortUndo: null }
             }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
@@ -906,7 +904,7 @@
 
   function saveNotebook(){
     localStorage.setItem(KEY_V3, JSON.stringify(notebook));
-    rebuildRail();          // rail (pages or results)
+    rebuildRail();
     updateSortLabel();
   }
 
@@ -933,8 +931,6 @@
 
   /* =========================
      Rail rendering
-     - if search empty: normal Pages mode (category -> pages)
-     - if search non-empty: Results mode (category -> page -> matching tasks full text)
      ========================= */
   function rebuildRail(){
     const tokens = tokenize(railQuery);
@@ -947,12 +943,9 @@
     const matchedPages = pagesAll.filter(p => pageMatchesTokens(p, tokens));
 
     if (searching){
-      // Build full task results: ALL matching tasks, full text visible.
-      // Structure: category -> page -> items[]
       const catMap = new Map();
 
       for (const p of matchedPages){
-        // collect matching items (active + archived)
         const hits = [];
         for (const it of (p.items || [])){
           const txt = (it && it.text) ? String(it.text) : "";
@@ -967,7 +960,7 @@
             });
           }
         }
-        if (hits.length === 0) continue; // page matched by metadata but no task matched; Option 1 expects task lines
+        if (hits.length === 0) continue;
         const cat = normalizeCategory(p.category);
         if (!catMap.has(cat)) catMap.set(cat, []);
         catMap.get(cat).push({ page: p, hits });
@@ -987,7 +980,6 @@
         return a.localeCompare(b);
       });
 
-      // Render results (all open, no collapse persistence in search)
       for (const cat of cats){
         const wrap = document.createElement("div");
         wrap.className = "results-cat";
@@ -1025,7 +1017,6 @@
           titleRow.appendChild(jump);
           sec.appendChild(titleRow);
 
-          // All task lines (full visible)
           for (const hit of entry.hits){
             const b = document.createElement("button");
             b.type = "button";
@@ -1035,7 +1026,6 @@
             meta.className = "result-meta";
             const ind = Math.max(0, Math.min(9, hit.indent|0));
             const arch = hit.archived ? "A" : "•";
-            // show minimal markers: indent level + archive flag
             meta.textContent = `${arch}${ind>0 ? ("·" + ind) : ""}`;
             b.appendChild(meta);
 
@@ -1052,11 +1042,10 @@
 
         pagesRail.appendChild(wrap);
       }
-
       return;
     }
 
-    // Normal Pages mode (grouped + collapsible, persisted)
+    // Normal Pages mode
     if (pagesAll.length === 0){
       const div = document.createElement("div");
       div.className = "rail-empty";
@@ -1065,7 +1054,6 @@
       return;
     }
 
-    // Group by category
     const groups = new Map();
     for (const p of pagesAll){
       const cat = normalizeCategory(p.category);
@@ -1121,10 +1109,7 @@
       details.appendChild(summary);
       details.appendChild(list);
 
-      details.addEventListener("toggle", () => {
-        setCatClosed(cat, !details.open);
-      });
-
+      details.addEventListener("toggle", () => setCatClosed(cat, !details.open));
       pagesRail.appendChild(details);
     }
   }
@@ -1197,14 +1182,8 @@
     if (!notebook.pages[pageId]) return;
     notebook.activePageId = pageId;
     focusedId = itemId;
-
-    // Switch view based on where item lives
     view = archived ? "archive" : "active";
-
-    // Save (so rail highlights page etc.)
     saveNotebook();
-
-    // Render and focus the item
     render(itemId);
   }
 
@@ -1321,7 +1300,6 @@
         const v = el.value;
         el.setSelectionRange(v.length, v.length);
       } else {
-        // fallback: focus first task
         const first = grid.querySelector(".row .task");
         if (first) first.focus();
       }
@@ -1472,7 +1450,7 @@
   }
 
   /* =========================
-     Today + Ctrl+Alt+T
+     Today
      ========================= */
   function findTodayPageId(){
     for (const [pid, pg] of Object.entries(notebook.pages)){
@@ -1480,7 +1458,6 @@
     }
     return null;
   }
-
   function ensureTodayPage(){
     let pid = findTodayPageId();
     if (pid && notebook.pages[pid]) return pid;
@@ -1494,7 +1471,6 @@
     };
     return pid;
   }
-
   function goToTodayPage(){
     const todayId = ensureTodayPage();
     switchPage(todayId);
@@ -1502,6 +1478,7 @@
     toast("Today");
   }
 
+  // Ctrl+Alt+T
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
       e.preventDefault();
@@ -1526,13 +1503,11 @@
     const before = list[startIdx - 1];
     return { ids: block.map(x => x.id), nextFocusId: after ? after.id : (before ? before.id : null) };
   }
-
   function insertIntoActiveSection(itemsArr, newItems){
     let idx = itemsArr.findIndex(x => x.archived);
     if (idx < 0) idx = itemsArr.length;
     itemsArr.splice(idx, 0, ...newItems);
   }
-
   function moveBlockToToday(startId){
     const source = currentPage();
     if (String(source.name || "").trim().toLowerCase() === "today"){ toast("Already Today"); return; }
@@ -1570,7 +1545,6 @@
      Sort toggle (block-safe)
      ========================= */
   function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
-
   function blockify(list){
     const blocks = [];
     let current = null;
@@ -1586,12 +1560,10 @@
     for (const b of blocks){ if (!b.key) b.key = ""; }
     return blocks;
   }
-
   function updateSortLabel(){
     const p = currentPage();
     sortBtn.textContent = (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length) ? "Unsort" : "Sort A→Z";
   }
-
   function sortOrUnsort(){
     const p = currentPage();
 
@@ -1651,7 +1623,6 @@
       }
     }
   }
-
   async function readClipboard(){
     try{
       return await navigator.clipboard.readText();
@@ -1659,17 +1630,14 @@
       return prompt("Paste tasks text here:") || "";
     }
   }
-
   function formatTxtLine(it){
     const tabs = "\t".repeat(clamp(it.indent, 0, MAX_INDENT));
     const mark = it.done ? "[x] " : "[ ] ";
     return tabs + mark + (it.text || "");
   }
-
   function getActiveList(){
     return currentPage().items.filter(it => !it.archived);
   }
-
   function getBlockFromActive(startId){
     const list = getActiveList();
     const startIdx = list.findIndex(x => x.id === startId);
@@ -1683,11 +1651,9 @@
     }
     return block;
   }
-
   function blockToText(block){
     return block.map(formatTxtLine).join("\n") + "\n";
   }
-
   function textToItems(text){
     const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
     const out = [];
@@ -1712,7 +1678,6 @@
     }
     return out;
   }
-
   function insertItemsBelowId(anchorId, newItems){
     if (!newItems.length) return;
     const p = currentPage();
@@ -1740,7 +1705,6 @@
     focusedId = newItems[0].id;
     render(focusedId);
   }
-
   async function doCopyById(rowId){
     if (view !== "active"){ toast("Active only"); return; }
     const block = getBlockFromActive(rowId);
@@ -1748,7 +1712,6 @@
     const ok = await writeClipboard(blockToText(block));
     toast(ok ? "Copied" : "Copy failed");
   }
-
   async function doPasteBelowId(rowId){
     if (view !== "active"){ toast("Active only"); return; }
     const text = await readClipboard();
@@ -1771,14 +1734,12 @@
   function safeName(name){
     return String(name || "page").trim().replace(/[^\w\-]+/g, "_").slice(0, 40) || "page";
   }
-
   function exportJson(){
     const p = currentPage();
     const blob = new Blob([JSON.stringify(p.items, null, 2)], { type:"application/json" });
     downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.json`);
     toast("Exported JSON");
   }
-
   async function importJsonFile(f){
     const p = currentPage();
     const text = await f.text();
@@ -1793,7 +1754,6 @@
     setView("active");
     toast("Imported JSON");
   }
-
   const ARCHIVE_MARKER = "--- ARCHIVE ---";
   function toPlainText(){
     const p = currentPage();
@@ -1836,14 +1796,12 @@
     }
     return out;
   }
-
   function exportTxt(){
     const p = currentPage();
     const blob = new Blob([toPlainText()], { type:"text/plain;charset=utf-8" });
     downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
     toast("Exported TXT");
   }
-
   async function importTxtFile(f){
     const p = currentPage();
     const text = await f.text();
@@ -1854,14 +1812,12 @@
     setView("active");
     toast("Imported TXT");
   }
-
   function backupAll(){
     const payload = { format:"tiny-todo-backup", exportedAt: new Date().toISOString(), notebook };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
     downloadBlob(blob, `tiny-todo-backup-${new Date().toISOString().slice(0,10)}.json`);
     toast("Backup exported");
   }
-
   async function restoreAllFromFile(f){
     const text = await f.text();
     const data = JSON.parse(text);
@@ -1884,12 +1840,8 @@
 
   /* =========================
      Search box behavior
-     - live filter
-     - Esc clears
-     - Enter: if exactly 1 task result => jump to it; else if exactly 1 page => open page
      ========================= */
   function computeSearchResults(tokens){
-    // returns {pagesMatched, taskHits:[{pageId,itemId,archived}]}
     const pagesAll = getSortedPages().filter(p => pageMatchesTokens(p, tokens));
     const hits = [];
     for (const p of pagesAll){
@@ -1923,14 +1875,11 @@
 
       const { pagesMatched, taskHits } = computeSearchResults(tokens);
 
-      // Prefer exact task jump if only one task hit
       if (taskHits.length === 1){
         e.preventDefault();
         goToItem(taskHits[0].pageId, taskHits[0].itemId, taskHits[0].archived);
         return;
       }
-
-      // Otherwise if exactly one page match, open that page
       if (pagesMatched.length === 1){
         e.preventDefault();
         switchPage(pagesMatched[0].id);
@@ -1960,45 +1909,15 @@
   });
 
   /* =========================
-     Ctrl+Alt+T => Today
-     ========================= */
-  function findTodayPageId(){
-    for (const [pid, pg] of Object.entries(notebook.pages)){
-      if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
-    }
-    return null;
-  }
-  function ensureTodayPage(){
-    let pid = findTodayPageId();
-    if (pid && notebook.pages[pid]) return pid;
-    pid = uid();
-    notebook.pages[pid] = {
-      id: pid,
-      name: "Today",
-      category: UNCATEGORIZED,
-      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
-      sortUndo: null
-    };
-    return pid;
-  }
-  function goToTodayPage(){
-    const todayId = ensureTodayPage();
-    switchPage(todayId);
-    setView("active");
-    toast("Today");
-  }
-  document.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
-      e.preventDefault();
-      goToTodayPage();
-    }
-  });
-
-  /* =========================
      Wire events + Init
      ========================= */
   toggleUi.addEventListener("click", toggleUiMode);
   newPageBtn.addEventListener("click", newPage);
+
+  // ✅ NEW: Today button click
+  todayBtn.addEventListener("click", () => {
+    goToTodayPage();
+  });
 
   addRowBtn.addEventListener("click", addRow);
   sortBtn.addEventListener("click", sortOrUnsort);
