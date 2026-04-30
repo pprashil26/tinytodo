@@ -30,7 +30,7 @@
       --gap: 12px;
 
       /* Right rail */
-      --rail-w: 160px;
+      --rail-w: 170px;
       --rail-font: 12px;
       --rail-color: rgba(0,0,0,0.40);
       --rail-color-active: rgba(0,0,0,0.72);
@@ -38,7 +38,7 @@
       --rail-border: rgba(0,0,0,0.08);
 
       /* Header search */
-      --search-w: 240px;
+      --search-w: 250px;
     }
 
     *{ box-sizing:border-box; }
@@ -103,7 +103,6 @@
       white-space: nowrap;
       color: rgba(0,0,0,0.65);
     }
-
     .page-search{
       width: var(--search-w);
       max-width: 60vw;
@@ -116,9 +115,7 @@
       outline: none;
       height: 26px;
     }
-    .page-search::placeholder{
-      color: rgba(0,0,0,0.35);
-    }
+    .page-search::placeholder{ color: rgba(0,0,0,0.35); }
 
     /* ---------- Layout ---------- */
     .wrap{
@@ -177,6 +174,7 @@
       border-radius: 999px;
     }
 
+    /* Normal rail: category groups */
     details.rail-cat{
       border-top: 1px solid var(--rail-border);
       padding-top: 6px;
@@ -244,14 +242,76 @@
       color: rgba(0,0,0,0.30);
       line-height: 1;
     }
-    .page-rename:hover{
-      color: rgba(0,0,0,0.75);
-    }
+    .page-rename:hover{ color: rgba(0,0,0,0.75); }
 
     .rail-empty{
       color: rgba(0,0,0,0.35);
       font-size: 11px;
       margin-top: 6px;
+    }
+
+    /* Results mode styling (full text visible) */
+    .results-cat{
+      border-top: 1px solid var(--rail-border);
+      padding-top: 6px;
+    }
+    .results-cat:first-child{ border-top:none; padding-top:0; }
+
+    .results-cat-title{
+      font-weight: 700;
+      color: rgba(0,0,0,0.45);
+      margin-bottom: 6px;
+    }
+
+    .results-page{
+      margin: 6px 0 10px;
+      padding-left: 2px;
+    }
+    .results-page-title{
+      font-weight: 600;
+      color: rgba(0,0,0,0.55);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .results-page-title .name{
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      flex: 1 1 auto;
+      min-width:0;
+      text-align:left;
+    }
+    .results-page-title .jump{
+      color: rgba(0,0,0,0.30);
+      font-size: 11px;
+      flex: 0 0 auto;
+    }
+    .results-page-title .jump:hover{ color: rgba(0,0,0,0.75); }
+
+    .result-item{
+      display:block;
+      text-align:left;
+      width:100%;
+      color: rgba(0,0,0,0.45);
+      font-size: 12px;
+      line-height: 1.25;
+      white-space: normal;      /* ✅ full text visible */
+      overflow: visible;
+      text-overflow: unset;
+      word-break: break-word;   /* wrap long strings */
+      padding: 0;
+      margin: 0 0 6px 0;
+    }
+    .result-item:hover{
+      color: rgba(0,0,0,0.85);
+    }
+    .result-meta{
+      color: rgba(0,0,0,0.25);
+      font-size: 10px;
+      margin-right: 6px;
     }
 
     /* ---------- Paper/grid ---------- */
@@ -347,7 +407,7 @@
     .mini-act:hover{ color: rgba(0,0,0,0.85); }
     .mini-act:disabled{ opacity: .25; }
 
-    /* ---------- Sidebar (chevrons) ---------- */
+    /* ---------- Sidebar ---------- */
     .side-block{
       border: 1px solid rgba(0,0,0,0.08);
       border-radius: 12px;
@@ -458,7 +518,7 @@
         --act-col: 72px;
         --indent-step: 18px;
         --sidebar-w: 180px;
-        --rail-w: 135px;
+        --rail-w: 145px;
         --rail-font: 11px;
         --search-w: 190px;
       }
@@ -536,7 +596,7 @@
   </main>
 
   <aside class="pages-rail" aria-label="Pages rail">
-    <div class="rail-title">Pages</div>
+    <div class="rail-title" id="railTitle">Pages</div>
     <div class="rail-groups" id="pagesRail"></div>
   </aside>
 </div>
@@ -559,6 +619,7 @@
   const statusEl = document.getElementById("status");
 
   const pageSearch = document.getElementById("pageSearch");
+  const railTitle = document.getElementById("railTitle");
   const pagesRail = document.getElementById("pagesRail");
 
   const newPageBtn = document.getElementById("newPage");
@@ -689,20 +750,17 @@
   /* =========================
      FULL-TEXT SEARCH (B + AND)
      - matches category + name + ALL tasks (active + archived)
-     - AND: all words must exist somewhere in page text
+     - AND: all words must exist somewhere in page, and results show matching task lines
      ========================= */
   function norm(s){ return String(s || "").toLowerCase(); }
 
   function tokenize(q){
     const s = norm(q).trim();
     if (!s) return [];
-    // split on whitespace; AND semantics
     return s.split(/\s+/).filter(Boolean);
   }
 
   function pageHaystack(p){
-    // Build a searchable string containing:
-    // category + name + all tasks (active + archived)
     let h = (p.category || "") + " " + (p.name || "");
     if (Array.isArray(p.items)){
       for (const it of p.items){
@@ -715,6 +773,15 @@
   function pageMatchesTokens(p, tokens){
     if (!tokens || tokens.length === 0) return true;
     const hay = pageHaystack(p);
+    for (const t of tokens){
+      if (!hay.includes(t)) return false;
+    }
+    return true;
+  }
+
+  function itemMatchesTokens(itemText, tokens){
+    if (!tokens || tokens.length === 0) return true;
+    const hay = norm(itemText || "");
     for (const t of tokens){
       if (!hay.includes(t)) return false;
     }
@@ -839,75 +906,183 @@
 
   function saveNotebook(){
     localStorage.setItem(KEY_V3, JSON.stringify(notebook));
-    rebuildPagesRail();
+    rebuildRail();          // rail (pages or results)
     updateSortLabel();
   }
 
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
   /* =========================
-     Pages Rail (grouped, collapsible, FULL-TEXT searchable) + Rename icon
+     Rail helpers (collapse state)
      ========================= */
-  function getSortedPages(){
-    return Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
-  }
-
   function catStorageKey(cat){
     return RAIL_KEY_PREFIX + encodeURIComponent(cat);
   }
-
   function isCatClosed(cat){
     return localStorage.getItem(catStorageKey(cat)) === "1";
   }
-
   function setCatClosed(cat, closed){
     const k = catStorageKey(cat);
     if (closed) localStorage.setItem(k, "1");
     else localStorage.removeItem(k);
   }
 
-  function rebuildPagesRail(){
-    const tokens = tokenize(railQuery);
-    const pagesAll = getSortedPages();
-    const pages = pagesAll.filter(p => pageMatchesTokens(p, tokens));
+  function getSortedPages(){
+    return Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
+  }
 
+  /* =========================
+     Rail rendering
+     - if search empty: normal Pages mode (category -> pages)
+     - if search non-empty: Results mode (category -> page -> matching tasks full text)
+     ========================= */
+  function rebuildRail(){
+    const tokens = tokenize(railQuery);
+    const searching = tokens.length > 0;
+
+    railTitle.textContent = searching ? "Results" : "Pages";
     pagesRail.innerHTML = "";
-    if (pages.length === 0){
+
+    const pagesAll = getSortedPages();
+    const matchedPages = pagesAll.filter(p => pageMatchesTokens(p, tokens));
+
+    if (searching){
+      // Build full task results: ALL matching tasks, full text visible.
+      // Structure: category -> page -> items[]
+      const catMap = new Map();
+
+      for (const p of matchedPages){
+        // collect matching items (active + archived)
+        const hits = [];
+        for (const it of (p.items || [])){
+          const txt = (it && it.text) ? String(it.text) : "";
+          if (!txt.trim()) continue;
+          if (itemMatchesTokens(txt, tokens)){
+            hits.push({
+              itemId: it.id,
+              text: txt,
+              archived: !!it.archived,
+              done: !!it.done,
+              indent: Number(it.indent || 0)
+            });
+          }
+        }
+        if (hits.length === 0) continue; // page matched by metadata but no task matched; Option 1 expects task lines
+        const cat = normalizeCategory(p.category);
+        if (!catMap.has(cat)) catMap.set(cat, []);
+        catMap.get(cat).push({ page: p, hits });
+      }
+
+      if (catMap.size === 0){
+        const div = document.createElement("div");
+        div.className = "rail-empty";
+        div.textContent = "No task matches";
+        pagesRail.appendChild(div);
+        return;
+      }
+
+      const cats = Array.from(catMap.keys()).sort((a,b) => {
+        if (a === UNCATEGORIZED && b !== UNCATEGORIZED) return 1;
+        if (b === UNCATEGORIZED && a !== UNCATEGORIZED) return -1;
+        return a.localeCompare(b);
+      });
+
+      // Render results (all open, no collapse persistence in search)
+      for (const cat of cats){
+        const wrap = document.createElement("div");
+        wrap.className = "results-cat";
+
+        const h = document.createElement("div");
+        h.className = "results-cat-title";
+        h.textContent = cat;
+        wrap.appendChild(h);
+
+        const pageEntries = catMap.get(cat).slice().sort((a,b) => a.page.name.localeCompare(b.page.name));
+        for (const entry of pageEntries){
+          const sec = document.createElement("div");
+          sec.className = "results-page";
+
+          const titleRow = document.createElement("div");
+          titleRow.className = "results-page-title";
+
+          const nameBtn = document.createElement("button");
+          nameBtn.type = "button";
+          nameBtn.className = "name";
+          nameBtn.textContent = entry.page.name;
+          nameBtn.title = `${cat}::${entry.page.name}`;
+          nameBtn.addEventListener("click", () => {
+            switchPage(entry.page.id);
+          });
+
+          const jump = document.createElement("button");
+          jump.type = "button";
+          jump.className = "jump";
+          jump.textContent = "→";
+          jump.title = "Open page";
+          jump.addEventListener("click", () => switchPage(entry.page.id));
+
+          titleRow.appendChild(nameBtn);
+          titleRow.appendChild(jump);
+          sec.appendChild(titleRow);
+
+          // All task lines (full visible)
+          for (const hit of entry.hits){
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "result-item";
+
+            const meta = document.createElement("span");
+            meta.className = "result-meta";
+            const ind = Math.max(0, Math.min(9, hit.indent|0));
+            const arch = hit.archived ? "A" : "•";
+            // show minimal markers: indent level + archive flag
+            meta.textContent = `${arch}${ind>0 ? ("·" + ind) : ""}`;
+            b.appendChild(meta);
+
+            const txt = document.createElement("span");
+            txt.textContent = hit.text;
+            b.appendChild(txt);
+
+            b.addEventListener("click", () => goToItem(entry.page.id, hit.itemId, hit.archived));
+            sec.appendChild(b);
+          }
+
+          wrap.appendChild(sec);
+        }
+
+        pagesRail.appendChild(wrap);
+      }
+
+      return;
+    }
+
+    // Normal Pages mode (grouped + collapsible, persisted)
+    if (pagesAll.length === 0){
       const div = document.createElement("div");
       div.className = "rail-empty";
-      div.textContent = "No matches";
+      div.textContent = "No pages";
       pagesRail.appendChild(div);
       return;
     }
 
     // Group by category
     const groups = new Map();
-    for (const p of pages){
+    for (const p of pagesAll){
       const cat = normalizeCategory(p.category);
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat).push(p);
     }
 
-    // Category sort (Uncategorized last)
     const cats = Array.from(groups.keys()).sort((a,b) => {
       if (a === UNCATEGORIZED && b !== UNCATEGORIZED) return 1;
       if (b === UNCATEGORIZED && a !== UNCATEGORIZED) return -1;
       return a.localeCompare(b);
     });
 
-    const searching = tokens.length > 0;
-
     for (const cat of cats){
       const details = document.createElement("details");
       details.className = "rail-cat";
-
-      // If searching: auto-open to show results.
-      // If not searching: respect persisted state.
-      if (searching){
-        details.open = true;
-      } else {
-        if (!isCatClosed(cat)) details.open = true;
-      }
+      if (!isCatClosed(cat)) details.open = true;
 
       const summary = document.createElement("summary");
       summary.textContent = cat;
@@ -915,7 +1090,8 @@
       const list = document.createElement("div");
       list.className = "rail-pages";
 
-      for (const p of groups.get(cat)){
+      const pages = groups.get(cat).slice().sort((a,b)=>a.name.localeCompare(b.name));
+      for (const p of pages){
         const row = document.createElement("div");
         row.className = "page-row";
 
@@ -945,9 +1121,7 @@
       details.appendChild(summary);
       details.appendChild(list);
 
-      // persist toggle state only when NOT searching
       details.addEventListener("toggle", () => {
-        if (searching) return;
         setCatClosed(cat, !details.open);
       });
 
@@ -955,6 +1129,9 @@
     }
   }
 
+  /* =========================
+     Page actions
+     ========================= */
   function switchPage(pageId){
     if (!notebook.pages[pageId]) return;
     notebook.activePageId = pageId;
@@ -985,11 +1162,9 @@
   function renamePageById(pageId){
     const p = notebook.pages[pageId];
     if (!p) return;
-
     const prefill = `${normalizeCategory(p.category)}::${p.name}`;
     const raw = prompt("Rename (Category::Name or Name):", prefill);
     if (raw == null) return;
-
     const parsed = parseRenameInput(raw, p.category);
     if (!parsed) return;
 
@@ -1013,6 +1188,24 @@
     setView("active");
     render(null);
     toast("Page deleted");
+  }
+
+  /* =========================
+     Jump to item from results
+     ========================= */
+  function goToItem(pageId, itemId, archived){
+    if (!notebook.pages[pageId]) return;
+    notebook.activePageId = pageId;
+    focusedId = itemId;
+
+    // Switch view based on where item lives
+    view = archived ? "archive" : "active";
+
+    // Save (so rail highlights page etc.)
+    saveNotebook();
+
+    // Render and focus the item
+    render(itemId);
   }
 
   /* =========================
@@ -1123,9 +1316,14 @@
     if (tryFocusId){
       const el = grid.querySelector(`.row[data-id="${tryFocusId}"] .task`);
       if (el){
+        el.scrollIntoView({ block: "center", behavior: "auto" });
         el.focus();
         const v = el.value;
         el.setSelectionRange(v.length, v.length);
+      } else {
+        // fallback: focus first task
+        const first = grid.querySelector(".row .task");
+        if (first) first.focus();
       }
     }
   }
@@ -1596,51 +1794,6 @@
     toast("Imported JSON");
   }
 
-  function exportTxt(){
-    const p = currentPage();
-    const blob = new Blob([toPlainText()], { type:"text/plain;charset=utf-8" });
-    downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
-    toast("Exported TXT");
-  }
-
-  async function importTxtFile(f){
-    const p = currentPage();
-    const text = await f.text();
-    p.items = fromPlainText(text);
-    p.sortUndo = null;
-    saveNotebook();
-    focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
-    setView("active");
-    toast("Imported TXT");
-  }
-
-  function backupAll(){
-    const payload = { format:"tiny-todo-backup", exportedAt: new Date().toISOString(), notebook };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
-    downloadBlob(blob, `tiny-todo-backup-${new Date().toISOString().slice(0,10)}.json`);
-    toast("Backup exported");
-  }
-
-  async function restoreAllFromFile(f){
-    const text = await f.text();
-    const data = JSON.parse(text);
-    const nbCandidate = (data && data.notebook) ? data.notebook : data;
-    const nb = ensureNotebookShape(nbCandidate);
-    if (!nb) throw new Error("Invalid backup file");
-
-    const ok = confirm("Restore ALL will replace your current pages and tasks. Continue?");
-    if (!ok) return;
-
-    notebook = nb;
-    view = "active";
-    focusedId = null;
-    saveNotebook();
-    rebuildPagesRail();
-    setView("active");
-    render(null);
-    toast("Restored ALL");
-  }
-
   const ARCHIVE_MARKER = "--- ARCHIVE ---";
   function toPlainText(){
     const p = currentPage();
@@ -1684,21 +1837,76 @@
     return out;
   }
 
+  function exportTxt(){
+    const p = currentPage();
+    const blob = new Blob([toPlainText()], { type:"text/plain;charset=utf-8" });
+    downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
+    toast("Exported TXT");
+  }
+
+  async function importTxtFile(f){
+    const p = currentPage();
+    const text = await f.text();
+    p.items = fromPlainText(text);
+    p.sortUndo = null;
+    saveNotebook();
+    focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
+    setView("active");
+    toast("Imported TXT");
+  }
+
+  function backupAll(){
+    const payload = { format:"tiny-todo-backup", exportedAt: new Date().toISOString(), notebook };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+    downloadBlob(blob, `tiny-todo-backup-${new Date().toISOString().slice(0,10)}.json`);
+    toast("Backup exported");
+  }
+
+  async function restoreAllFromFile(f){
+    const text = await f.text();
+    const data = JSON.parse(text);
+    const nbCandidate = (data && data.notebook) ? data.notebook : data;
+    const nb = ensureNotebookShape(nbCandidate);
+    if (!nb) throw new Error("Invalid backup file");
+
+    const ok = confirm("Restore ALL will replace your current pages and tasks. Continue?");
+    if (!ok) return;
+
+    notebook = nb;
+    view = "active";
+    focusedId = null;
+    saveNotebook();
+    rebuildRail();
+    setView("active");
+    render(null);
+    toast("Restored ALL");
+  }
+
   /* =========================
-     Search box behavior (FULL-TEXT)
+     Search box behavior
      - live filter
      - Esc clears
-     - Enter: if exactly 1 match, jump
+     - Enter: if exactly 1 task result => jump to it; else if exactly 1 page => open page
      ========================= */
-  function getMatchingPageIds(q){
-    const tokens = tokenize(q);
-    const pages = getSortedPages().filter(p => pageMatchesTokens(p, tokens));
-    return pages.map(p => p.id);
+  function computeSearchResults(tokens){
+    // returns {pagesMatched, taskHits:[{pageId,itemId,archived}]}
+    const pagesAll = getSortedPages().filter(p => pageMatchesTokens(p, tokens));
+    const hits = [];
+    for (const p of pagesAll){
+      for (const it of (p.items || [])){
+        const txt = it && it.text ? String(it.text) : "";
+        if (!txt.trim()) continue;
+        if (itemMatchesTokens(txt, tokens)){
+          hits.push({ pageId: p.id, itemId: it.id, archived: !!it.archived });
+        }
+      }
+    }
+    return { pagesMatched: pagesAll, taskHits: hits };
   }
 
   pageSearch.addEventListener("input", () => {
     railQuery = pageSearch.value || "";
-    rebuildPagesRail();
+    rebuildRail();
   });
 
   pageSearch.addEventListener("keydown", (e) => {
@@ -1706,14 +1914,26 @@
       e.preventDefault();
       pageSearch.value = "";
       railQuery = "";
-      rebuildPagesRail();
+      rebuildRail();
       pageSearch.blur();
     }
     if (e.key === "Enter"){
-      const ids = getMatchingPageIds(pageSearch.value || "");
-      if (ids.length === 1){
+      const tokens = tokenize(pageSearch.value || "");
+      if (tokens.length === 0) return;
+
+      const { pagesMatched, taskHits } = computeSearchResults(tokens);
+
+      // Prefer exact task jump if only one task hit
+      if (taskHits.length === 1){
         e.preventDefault();
-        switchPage(ids[0]);
+        goToItem(taskHits[0].pageId, taskHits[0].itemId, taskHits[0].archived);
+        return;
+      }
+
+      // Otherwise if exactly one page match, open that page
+      if (pagesMatched.length === 1){
+        e.preventDefault();
+        switchPage(pagesMatched[0].id);
       }
     }
   });
@@ -1748,7 +1968,6 @@
     }
     return null;
   }
-
   function ensureTodayPage(){
     let pid = findTodayPageId();
     if (pid && notebook.pages[pid]) return pid;
@@ -1762,14 +1981,12 @@
     };
     return pid;
   }
-
   function goToTodayPage(){
     const todayId = ensureTodayPage();
     switchPage(todayId);
     setView("active");
     toast("Today");
   }
-
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
       e.preventDefault();
@@ -1781,7 +1998,6 @@
      Wire events + Init
      ========================= */
   toggleUi.addEventListener("click", toggleUiMode);
-
   newPageBtn.addEventListener("click", newPage);
 
   addRowBtn.addEventListener("click", addRow);
@@ -1827,11 +2043,12 @@
   deletePageBtn.addEventListener("click", deletePage);
 
   // Init
-  rebuildPagesRail();
+  rebuildRail();
   focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
   setView("active");
   updateSortLabel();
   toast("");
+
 })();
 </script>
 </body>
