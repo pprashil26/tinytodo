@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
-<headinitial-scale=1"/><head>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tiny Todo</title>
 
 <style>
@@ -29,6 +31,12 @@
   --exp-off: rgba(0,0,0,.25);
   --exp-on: rgba(0,0,0,.70);
   --exp-preview: rgba(0,0,0,.62);
+
+  /* Mobile drawer */
+  --drawer-bg: rgba(255,255,255,.96);
+  --drawer-border: rgba(0,0,0,.10);
+  --drawer-shadow: 0 18px 40px rgba(0,0,0,.16);
+  --backdrop: rgba(0,0,0,.18);
 }
 
 *{box-sizing:border-box}
@@ -50,16 +58,67 @@ button:disabled{opacity:.35;cursor:default;transform:none}
 input[type="file"]{display:none!important}
 
 /* Header */
-header{position:sticky;top:0;z-index:20;background:rgba(244,244,244,.9);backdrop-filter:blur(6px);border-bottom:1px solid rgba(0,0,0,.06)}
-.header-inner{width:100%;max-width:var(--page-w);margin:0 auto;padding:6px 8px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:nowrap;white-space:nowrap}
+header{
+  position:sticky;top:0;z-index:20;
+  background:rgba(244,244,244,.9);
+  backdrop-filter:blur(6px);
+  border-bottom:1px solid rgba(0,0,0,.06);
+}
+.header-inner{
+  width:100%;max-width:var(--page-w);
+  margin:0 auto;padding:6px 8px;
+  display:flex;align-items:center;justify-content:center;
+  gap:10px;flex-wrap:nowrap;white-space:nowrap;
+}
 .title{font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;color:rgba(0,0,0,.65)}
-.page-search{width:var(--search-w);max-width:60vw;border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:4px 10px;background:rgba(255,255,255,.85);font:inherit;color:rgba(0,0,0,.75);outline:none;height:26px}
+.page-search{
+  width:var(--search-w);max-width:60vw;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:999px;padding:4px 10px;
+  background:rgba(255,255,255,.85);
+  font:inherit;color:rgba(0,0,0,.75);outline:none;height:26px;
+}
 .page-search::placeholder{color:rgba(0,0,0,.35)}
-.filter-important{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,.14);color:rgba(0,0,0,.50);background:rgba(255,255,255,.55);line-height:1.2}
-.filter-important.active{border-color:rgba(190,0,0,.35);background:var(--imp-bg);color:rgba(150,0,0,.85)}
+.filter-important{
+  font-size:12px;padding:2px 8px;border-radius:999px;
+  border:1px solid rgba(0,0,0,.14);
+  color:rgba(0,0,0,.50);
+  background:rgba(255,255,255,.55);
+  line-height:1.2;
+}
+.filter-important.active{
+  border-color:rgba(190,0,0,.35);
+  background:var(--imp-bg);
+  color:rgba(150,0,0,.85);
+}
+
+/* Mobile header icon buttons (hidden on desktop) */
+.mob-btn{
+  display:none;
+  width:30px;height:30px;
+  border-radius:10px;
+  border:1px solid rgba(0,0,0,.10);
+  background:rgba(255,255,255,.65);
+  color:rgba(0,0,0,.55);
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  line-height:1;
+  padding:0;
+}
+.mob-btn:hover{color:rgba(0,0,0,.85)}
+.mob-btn:active{transform:translateY(1px)}
 
 /* Layout */
-.wrap{width:100%;max-width:calc(var(--page-w) + var(--sidebar-w) + var(--rail-w) + (var(--gap)*2));margin:0 auto;padding:10px 8px 18px;display:flex;gap:var(--gap);align-items:flex-start;justify-content:center}
+.wrap{
+  width:100%;
+  max-width:calc(var(--page-w) + var(--sidebar-w) + var(--rail-w) + (var(--gap)*2));
+  margin:0 auto;
+  padding:10px 8px 18px;
+  display:flex;gap:var(--gap);
+  align-items:flex-start;
+  justify-content:center;
+}
 .sidebar{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);position:sticky;top:56px;align-self:flex-start}
 .main{width:100%;max-width:var(--page-w)}
 
@@ -68,16 +127,11 @@ header{position:sticky;top:0;z-index:20;background:rgba(244,244,244,.9);backdrop
 details.group{border-top:1px solid rgba(0,0,0,.08);padding-top:8px;margin-top:8px}
 details.group:first-child{border-top:none;padding-top:0;margin-top:0}
 
-/* Left panel headings match right panel subtle grey */
+/* Left headings match right rail subtle grey */
 summary.group-sum{
-  list-style:none;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  user-select:none;
-  color: var(--rail-head-color);
-  font-weight:600;
+  list-style:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;
+  user-select:none;color:var(--rail-head-color);font-weight:600;
 }
 summary.group-sum::-webkit-details-marker{display:none}
 summary.group-sum::after{content:"›";transform:rotate(90deg);opacity:.65}
@@ -128,7 +182,7 @@ input[type="checkbox"]{width:14px;height:14px;margin:0;accent-color:#222}
 .expandRow .cell{height:auto;align-items:flex-start;padding-top:4px;padding-bottom:8px}
 .expandRow .cell.check{border-right:1px solid rgba(40,60,90,.08)}
 .expandRow .cell.act{border-left:1px solid rgba(40,60,90,.06)}
-.previewText{width:100%;color:var(--exp-preview);font-size:12px;line-height:1.3;white-space:pre-wrap;word-break:break-word}
+.previewText{width:100%;color:var(--exp-preview);font-size:12px;line-height:1.35;white-space:pre-wrap;word-break:break-word}
 
 /* Bottom */
 .bottom-actions{display:flex;justify-content:center;gap:14px;align-items:center;margin-top:10px;padding:0 2px;font-size:12px}
@@ -167,34 +221,114 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
 .rail-empty{color:rgba(0,0,0,.35);font-size:11px;margin-top:6px}
 
 /* Toast */
-#toast{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:6px 10px;font-size:12px;color:#222;box-shadow:0 10px 24px rgba(0,0,0,.10);display:none;z-index:30;max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:6px 10px;font-size:12px;color:#222;box-shadow:0 10px 24px rgba(0,0,0,.10);display:none;z-index:60;max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* Compact */
+/* Backdrop for mobile drawers */
+#backdrop{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:var(--backdrop);
+  z-index:45;
+}
+
+/* =========================================================
+   MOBILE RESPONSIVE (UI ONLY)
+   ========================================================= */
+@media (max-width: 768px){
+  /* mobile-only header buttons */
+  .mob-btn{display:inline-flex}
+
+  /* Make app feel native: bigger typography + row height */
+  :root{
+    --row-h:30px;
+    --font:15px;
+    --pad-x:6px;
+    --act-col:74px;
+    --check-col:58px;
+    --search-w: 160px;
+  }
+  .task{font-size:16px} /* avoid iOS zoom */
+
+  /* Make wrap full width with space for drawers */
+  .wrap{
+    max-width:100%;
+    padding:10px 10px 18px;
+  }
+
+  /* Drawer panels */
+  .sidebar, .pages-rail{
+    position:fixed;
+    top:56px;
+    bottom:10px;
+    max-height:unset;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+    background:var(--drawer-bg);
+    border:1px solid var(--drawer-border);
+    border-radius:18px;
+    box-shadow:var(--drawer-shadow);
+    z-index:50;
+  }
+
+  .sidebar{
+    left:10px;
+    width:min(84vw, 320px);
+    transform:translateX(calc(-100% - 14px));
+    transition:transform 160ms ease;
+  }
+  .pages-rail{
+    right:10px;
+    width:min(84vw, 280px);
+    transform:translateX(calc(100% + 14px));
+    transition:transform 160ms ease;
+  }
+
+  body.left-open .sidebar{ transform:translateX(0); }
+  body.right-open .pages-rail{ transform:translateX(0); }
+
+  body.left-open #backdrop,
+  body.right-open #backdrop{ display:block; }
+
+  /* prevent background scroll while drawer open */
+  body.left-open,
+  body.right-open{
+    overflow:hidden;
+    touch-action:none;
+  }
+
+  /* keep main content full width */
+  .main{max-width:100%}
+}
+
+/* Existing compact mode kept (desktop), mobile drawers override anyway */
 body.compact .sidebar{display:none}
 body.compact .wrap{display:flex;max-width:calc(var(--page-w) + var(--rail-w) + var(--gap))}
 body.compact .main{margin:0;max-width:var(--page-w)}
 body.compact .pages-rail{position:fixed;right:10px;top:62px;width:var(--rail-w);max-height:calc(100vh - 80px);background:transparent;padding:0;z-index:15}
 body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14px)}
-
-@media (max-width:520px){
-  :root{--row-h:28px;--font:15px;--pad-x:6px;--check-col:56px;--act-col:72px;--indent-step:18px;--sidebar-w:180px;--rail-w:145px;--rail-font:11px;--search-w:190px}
-  .task{font-size:16px}
-  .header-inner{gap:8px}
-}
 </style>
 </head>
 
 <body>
 <header>
   <div class="header-inner">
+    <!-- Mobile UI buttons (UI only) -->
+    <button type="button" class="mob-btn" id="mobLeftBtn" aria-label="Open menu" title="Menu">☰</button>
+
     <span class="title" id="toggleUi" title="Tap to hide/show sidebar">Tiny Todo</span>
+
     <input id="pageSearch" class="page-search" type="text" placeholder="Search pages…" autocomplete="off"/>
+
     <button type="button" id="newPage">+ Page</button>
     <button type="button" id="todayBtn" title="Go to Today">Today</button>
     <button type="button" id="importantFilterBtn" class="filter-important" title="Show only important (‼️) tasks">‼️ Only</button>
+
+    <button type="button" class="mob-btn" id="mobRightBtn" aria-label="Open pages" title="Pages">📄</button>
   </div>
 </header>
 
+<div id="backdrop" aria-hidden="true"></div>
 <div id="toast"></div>
 
 <div class="wrap">
@@ -270,6 +404,8 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 
   const body=document.body;
   const toggleUi=document.getElementById("toggleUi");
+  const backdrop=document.getElementById("backdrop");
+
   const toastEl=document.getElementById("toast");
   const statusEl=document.getElementById("status");
 
@@ -280,6 +416,9 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const newPageBtn=document.getElementById("newPage");
   const todayBtn=document.getElementById("todayBtn");
   const importantFilterBtn=document.getElementById("importantFilterBtn");
+
+  const mobLeftBtn=document.getElementById("mobLeftBtn");
+  const mobRightBtn=document.getElementById("mobRightBtn");
 
   const grid=document.getElementById("grid");
   const addRowBtn=document.getElementById("addRowBtn");
@@ -308,6 +447,37 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const fileAll=document.getElementById("fileAll");
   const fileAllTxt=document.getElementById("fileAllTxt");
   const clipFallback=document.getElementById("clipFallback");
+
+  /* =========================================================
+     UI ONLY: Mobile drawers open/close (no app logic)
+     ========================================================= */
+  function closeDrawers(){
+    body.classList.remove("left-open","right-open");
+  }
+  function toggleLeftDrawer(){
+    const open = body.classList.contains("left-open");
+    body.classList.toggle("left-open", !open);
+    body.classList.remove("right-open");
+  }
+  function toggleRightDrawer(){
+    const open = body.classList.contains("right-open");
+    body.classList.toggle("right-open", !open);
+    body.classList.remove("left-open");
+  }
+  mobLeftBtn.addEventListener("click", (e)=>{ e.preventDefault(); toggleLeftDrawer(); });
+  mobRightBtn.addEventListener("click", (e)=>{ e.preventDefault(); toggleRightDrawer(); });
+  backdrop.addEventListener("click", ()=> closeDrawers());
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape") closeDrawers();
+  });
+  // Close drawers on resize to desktop
+  window.addEventListener("resize", ()=>{
+    if(window.matchMedia("(min-width: 769px)").matches) closeDrawers();
+  });
+
+  /* =========================================================
+     Existing app logic (unchanged)
+     ========================================================= */
 
   let uiCompact=(localStorage.getItem(UI_KEY)==="1");
   function applyUiMode(){ body.classList.toggle("compact", uiCompact); }
@@ -778,12 +948,12 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   }
 
   // Sort/Unsort
-  function normTitle(s){ return String(s||"").trim().toLocaleLowerCase(); }
+  function normTitle2(s){ return String(s||"").trim().toLocaleLowerCase(); }
   function blockify(list){
     const blocks=[]; let current=null;
     for(const it of list){
       const isTop=(Number(it.indent)===0);
-      if(isTop||!current){ current={key:normTitle(it.text),items:[it]}; blocks.push(current); }
+      if(isTop||!current){ current={key:normTitle2(it.text),items:[it]}; blocks.push(current); }
       else current.items.push(it);
     }
     for(const b of blocks) if(!b.key) b.key="";
@@ -917,7 +1087,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast(`Moved ${moving.length}`);
   }
 
-  // Clipboard (copy/paste blocks)
+  // Clipboard copy/paste
   async function writeClipboard(text){
     try{ await navigator.clipboard.writeText(text); return true; }
     catch(e){
@@ -934,52 +1104,11 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     catch(e){ return prompt("Paste tasks text here:")||""; }
   }
 
-  // Per-page TXT format helpers (existing)
   function formatTxtLine(it){
     const tabs="\t".repeat(clamp(it.indent,0,MAX_INDENT));
     const mark=it.done?"[x] ":"[ ] ";
     return tabs+mark+(it.text||"");
   }
-
-  function toPlainTextForPage(page){
-    const lines=[];
-    const active=(page.items||[]).filter(x=>!x.archived);
-    const archived=(page.items||[]).filter(x=>x.archived);
-    for(const it of active) lines.push(formatTxtLine(it));
-    if(archived.length){
-      lines.push(ARCHIVE_MARKER);
-      for(const it of archived) lines.push(formatTxtLine(it));
-    }
-    return lines.join("\n") + "\n";
-  }
-
-  function fromPlainTextToItems(text){
-    const rawLines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
-    let inArchive=false;
-    const out=[];
-    for(let line of rawLines){
-      if(!line || line.trim()==="") continue;
-      if(line.trim()===ARCHIVE_MARKER){ inArchive=true; continue; }
-
-      let indent=0;
-      while(line.startsWith("\t")){ indent++; line=line.slice(1); }
-      while(line.startsWith("  ")){ indent++; line=line.slice(2); }
-      indent=clamp(indent,0,MAX_INDENT);
-
-      const trimmed=line.trimStart();
-      let done=false, textPart=trimmed;
-      const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-      if(m){ done=(m[1].toLowerCase()==="x"); textPart=m[2]??""; }
-
-      out.push({id:uid(),text:String(textPart),done,important:false,indent,archived:inArchive,archivedAt:inArchive?Date.now():null});
-    }
-    if(out.filter(x=>!x.archived).length===0){
-      out.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
-    }
-    return out;
-  }
-
-  // Copy/paste blocks in app (uses active-only)
   function getActiveList(){ return currentPage().items.filter(it=>!it.archived); }
   function getBlockFromActive(startId){
     const list=getActiveList();
@@ -994,13 +1123,11 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     return block;
   }
   function blockToText(block){ return block.map(formatTxtLine).join("\n")+"\n"; }
-
   function textToItems(text){
-    // paste items: treat as active tasks, important not encoded here
-    const raw=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+    const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
     const out=[];
-    for(let line of raw){
-      if(!line || line.trim()==="") continue;
+    for(let line of lines){
+      if(!line||line.trim()==="") continue;
 
       let indent=0;
       while(line.startsWith("\t")){ indent++; line=line.slice(1); }
@@ -1009,6 +1136,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 
       const trimmed=line.trimStart();
       let done=false, textPart=trimmed;
+
       const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
       if(m){ done=(m[1].toLowerCase()==="x"); textPart=m[2]??""; }
 
@@ -1016,7 +1144,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
     return out;
   }
-
   function insertItemsBelowId(anchorId,newItems){
     if(!newItems.length) return;
     const p=currentPage();
@@ -1043,7 +1170,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     focusedId=newItems[0].id;
     render(focusedId);
   }
-
   async function doCopyById(rowId){
     if(view!=="active"){ toast("Active only"); return; }
     const block=getBlockFromActive(rowId);
@@ -1078,7 +1204,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
   });
 
-  // Export / Import per-page
+  // Export/Import/Backup/Restore
   function downloadBlob(blob,filename){
     const a=document.createElement("a");
     a.href=URL.createObjectURL(blob);
@@ -1088,6 +1214,46 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   }
   function safeName(name){
     return String(name||"page").trim().replace(/[^\w\-]+/g,"_").slice(0,40) || "page";
+  }
+
+  function toPlainTextForPage(page){
+    const lines=[];
+    const items=page.items||[];
+    const active=items.filter(x=>!x.archived);
+    const archived=items.filter(x=>x.archived);
+
+    for(const it of active) lines.push(formatTxtLine(it));
+    if(archived.length){
+      lines.push(ARCHIVE_MARKER);
+      for(const it of archived) lines.push(formatTxtLine(it));
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  function fromPlainTextToItems(text){
+    const rawLines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+    let inArchive=false;
+    const out=[];
+    for(let line of rawLines){
+      if(!line || line.trim()==="") continue;
+      if(line.trim()===ARCHIVE_MARKER){ inArchive=true; continue; }
+
+      let indent=0;
+      while(line.startsWith("\t")){ indent++; line=line.slice(1); }
+      while(line.startsWith("  ")){ indent++; line=line.slice(2); }
+      indent=clamp(indent,0,MAX_INDENT);
+
+      const trimmed=line.trimStart();
+      let done=false, textPart=trimmed;
+      const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if(m){ done=(m[1].toLowerCase()==="x"); textPart=m[2]??""; }
+
+      out.push({id:uid(),text:String(textPart),done,important:false,indent,archived:inArchive,archivedAt:inArchive?Date.now():null});
+    }
+    if(out.filter(x=>!x.archived).length===0){
+      out.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
+    }
+    return out;
   }
 
   function exportJson(){
@@ -1128,7 +1294,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast("Imported TXT");
   }
 
-  // Backup / Restore ALL JSON (existing)
+  // Backup/restore ALL JSON
   function backupAll(){
     const payload={format:"tiny-todo-backup",exportedAt:new Date().toISOString(),notebook};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
@@ -1153,11 +1319,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast("Restored ALL");
   }
 
-  /* =========================================================
-     NEW: Backup ALL (TXT) + Restore ALL (TXT)
-     - Includes Active + Archived
-     - Preserves important by encoding prefix "‼️ "
-     ========================================================= */
+  // Backup/restore ALL TXT (v2.2)
   const TXT_ALL_MAGIC = "# tiny-todo-backup-txt v1";
   const PAGE_HEADER_PREFIX = "=== PAGE:";
 
@@ -1167,7 +1329,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     const imp = it.important ? "‼️ " : "";
     return tabs + mark + imp + (it.text || "");
   }
-
   function toPlainTextForPageAll(page){
     const lines=[];
     const items=page.items||[];
@@ -1181,7 +1342,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
     return lines.join("\n") + "\n";
   }
-
   function backupAllTxt(){
     const nowIso=new Date().toISOString();
     const lines=[];
@@ -1189,7 +1349,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     lines.push(`# exportedAt: ${nowIso}`);
     lines.push("");
 
-    // stable order: category then name
     const pages=Object.values(notebook.pages).slice().sort((a,b)=>{
       const ac=normalizeCategory(a.category).localeCompare(normalizeCategory(b.category));
       if(ac!==0) return ac;
@@ -1201,19 +1360,16 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       const name=String(p.name||"Untitled").trim() || "Untitled";
       lines.push(`=== PAGE: ${cat} :: ${name} ===`);
       lines.push(toPlainTextForPageAll(p).trimEnd());
-      lines.push(""); // blank line between pages
+      lines.push("");
     }
 
     const blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
     downloadBlob(blob,`tiny-todo-backup-${new Date().toISOString().slice(0,10)}.txt`);
     toast("Backup ALL (TXT) exported");
   }
-
   function parsePageHeader(line){
-    // line format: === PAGE: Cat :: Name ===
     let s=line.trim();
     s=s.replace(/^===\s*PAGE:\s*/i,"").replace(/\s*===$/,"").trim();
-    // support both "Cat :: Name" and "Cat::Name"
     let cat=UNCATEGORIZED, name=s;
     const sep = s.includes(" :: ") ? " :: " : (s.includes("::") ? "::" : null);
     if(sep){
@@ -1228,7 +1384,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
     return {category:cat,name};
   }
-
   function parseItemsFromAllTxt(pageText){
     const rawLines=pageText.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
     let inArchive=false;
@@ -1245,12 +1400,8 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       const trimmed=line.trimStart();
       let done=false;
       let textPart=trimmed;
-
       const m=trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-      if(m){
-        done=(m[1].toLowerCase()==="x");
-        textPart=m[2]??"";
-      }
+      if(m){ done=(m[1].toLowerCase()==="x"); textPart=m[2]??""; }
 
       let important=false;
       let finalText=String(textPart||"");
@@ -1259,28 +1410,16 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
         finalText=finalText.replace(/^‼️\s*/,"");
       }
 
-      out.push({
-        id:uid(),
-        text:finalText,
-        done,
-        important,
-        indent,
-        archived:inArchive,
-        archivedAt:inArchive?Date.now():null
-      });
+      out.push({id:uid(),text:finalText,done,important,indent,archived:inArchive,archivedAt:inArchive?Date.now():null});
     }
-
     if(out.filter(x=>!x.archived).length===0){
       out.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
     }
     return out;
   }
-
   async function restoreAllTxtFromFile(f){
     const text=await f.text();
     const lines=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
-
-    // quick validation: allow missing magic, but warn
     const hasMagic = lines.some(l=>l.trim()===TXT_ALL_MAGIC);
     if(!hasMagic){
       const ok = confirm("This file doesn't look like a Tiny Todo TXT backup.\nTry to restore anyway?");
@@ -1303,30 +1442,23 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 
     for(const line of lines){
       const t=line.trim();
-      if(t.startsWith("#")) continue; // metadata lines
+      if(t.startsWith("#")) continue;
       if(t.toUpperCase().startsWith(PAGE_HEADER_PREFIX)){
         flush();
         currentHeader = parsePageHeader(t);
         continue;
       }
-      // accumulate
       if(currentHeader) buffer.push(line);
     }
     flush();
 
-    if(Object.keys(pages).length===0){
-      throw new Error("No pages found in TXT backup.");
-    }
+    if(Object.keys(pages).length===0) throw new Error("No pages found in TXT backup.");
 
     const ok = confirm("Restore ALL (TXT) will replace your current pages and tasks. Continue?");
     if(!ok) return;
 
-    notebook = ensureNotebookShape({
-      version:1,
-      activePageId: Object.keys(pages)[0],
-      pages
-    });
-
+    const firstId = Object.keys(pages)[0];
+    notebook = ensureNotebookShape({version:1,activePageId:firstId,pages});
     view="active";
     focusedId=null;
     saveNotebook();
@@ -1364,9 +1496,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
             hits.push({itemId:it.id,text:txt,archived:!!it.archived,indent:Number(it.indent||0)});
           }
         }
-        if(hits.length===0){
-          hits.push({itemId:null,text:"[match in page name/category]",archived:false,indent:0});
-        }
+        if(hits.length===0) hits.push({itemId:null,text:"[match in page name/category]",archived:false,indent:0});
         const cat=normalizeCategory(p.category);
         if(!catMap.has(cat)) catMap.set(cat,[]);
         catMap.get(cat).push({page:p,hits});
@@ -1389,7 +1519,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       for(const cat of cats){
         const wrap=document.createElement("div");
         wrap.className="results-cat";
-
         const h=document.createElement("div");
         h.className="results-cat-title";
         h.textContent=cat;
@@ -1445,7 +1574,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 
           wrap.appendChild(sec);
         }
-
         pagesRail.appendChild(wrap);
       }
       return;
@@ -1508,15 +1636,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
   }
 
-  function goToItem(pageId,itemId,archived){
-    if(!notebook.pages[pageId]) return;
-    notebook.activePageId=pageId;
-    focusedId=itemId;
-    view=archived?"archive":"active";
-    saveNotebook();
-    render(itemId);
-  }
-
   function computeSearchResults(tokens){
     const pagesMatched=Object.values(notebook.pages).filter(p=>pageMatchesTokens(p,tokens));
     const taskHits=[];
@@ -1532,6 +1651,16 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     return {pagesMatched,taskHits};
   }
 
+  function goToItem(pageId,itemId,archived){
+    if(!notebook.pages[pageId]) return;
+    notebook.activePageId=pageId;
+    focusedId=itemId;
+    view=archived?"archive":"active";
+    saveNotebook();
+    render(itemId);
+  }
+
+  // UI actions
   importantFilterBtn.addEventListener("click",()=>{
     filterImportantOnly=!filterImportantOnly;
     localStorage.setItem(FILTER_KEY,filterImportantOnly?"1":"0");
@@ -1568,7 +1697,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     });
   }
 
-  // wire buttons
+  // wire
   toggleUi.addEventListener("click",toggleUiMode);
   newPageBtn.addEventListener("click",newPage);
   todayBtn.addEventListener("click",goToTodayPage);
@@ -1607,4 +1736,3 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 </script>
 </body>
 </html>
-<meta charset="utf-8"/>
