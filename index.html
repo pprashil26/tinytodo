@@ -172,8 +172,6 @@
       color: var(--rail-color-active);
       font-weight: 600;
     }
-
-    /* Subtle scrollbar */
     .pages-rail .pages-list::-webkit-scrollbar{ width: 6px; }
     .pages-rail .pages-list::-webkit-scrollbar-thumb{
       background: rgba(0,0,0,0.10);
@@ -363,7 +361,6 @@
       margin: 0;
       max-width: var(--page-w);
     }
-    /* Keep rail visible in compact, but make it fixed so it doesn't squeeze */
     body.compact .pages-rail{
       position: fixed;
       right: 10px;
@@ -413,7 +410,6 @@
 <div class="wrap">
   <aside class="sidebar">
     <div class="side-block">
-
       <details class="group">
         <summary>Backup</summary>
         <div class="group-body">
@@ -459,7 +455,6 @@
       <button type="button" id="sortBtn">Sort A→Z</button>
     </div>
 
-    <!-- hidden inputs + clipboard fallback -->
     <input id="fileJson" type="file" accept="application/json">
     <input id="fileTxt" type="file" accept="text/plain,.txt">
     <input id="fileAll" type="file" accept="application/json">
@@ -467,7 +462,6 @@
       style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
   </main>
 
-  <!-- ✅ Always-visible Pages rail -->
   <aside class="pages-rail" aria-label="Pages rail">
     <div class="rail-title">Pages</div>
     <div class="pages-list" id="pagesRail"></div>
@@ -554,7 +548,61 @@
     }, 900);
   }
 
-  // Data
+  /* =========================
+     NEW: Insert helpers + 3 shortcuts
+     ========================= */
+  function pad2(n){ return String(n).padStart(2, "0"); }
+
+  function fmtDateShort(d){
+    // short, stable: YYYY-MM-DD
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+  function fmtTimeOnly(d){
+    // 24h HH:mm
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+  function fmtTimestamp(d){
+    // YYYY-MM-DD HH:mm
+    return `${fmtDateShort(d)} ${fmtTimeOnly(d)}`;
+  }
+
+  function insertAtCursor(el, text){
+    if (!el) return;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const before = el.value.slice(0, start);
+    const after = el.value.slice(end);
+    el.value = before + text + after;
+    const newPos = start + text.length;
+    el.setSelectionRange(newPos, newPos);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  // Global shortcuts: only when a task input is focused
+  // Ctrl+Alt+S = timestamp, Ctrl+Alt+D = date, Ctrl+Alt+H = time
+  document.addEventListener("keydown", (e) => {
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!inTask) return;
+
+    if (!(e.ctrlKey && e.altKey) || e.metaKey) return;
+
+    const k = e.key.toLowerCase();
+    if (k === "s"){ // timestamp
+      e.preventDefault();
+      insertAtCursor(el, fmtTimestamp(new Date()));
+    } else if (k === "d"){ // date only
+      e.preventDefault();
+      insertAtCursor(el, fmtDateShort(new Date()));
+    } else if (k === "h"){ // time only
+      e.preventDefault();
+      insertAtCursor(el, fmtTimeOnly(new Date()));
+    }
+  });
+
+  /* =========================
+     Data / Notebook
+     ========================= */
   function seedItems(){
     return [
       { id: uid(), text: "Task", done:false, indent:0, archived:false, archivedAt:null },
@@ -618,7 +666,6 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-      // migrate v2 -> v3
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -634,7 +681,6 @@
         return nb;
       }
 
-      // migrate v1 -> v3
       const raw1 = localStorage.getItem(KEY_V1);
       if (raw1){
         const parsed1 = JSON.parse(raw1);
@@ -675,7 +721,9 @@
 
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-  // Pages UI
+  /* =========================
+     Pages UI
+     ========================= */
   function rebuildPageSelect(){
     const pages = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
     pageSelect.innerHTML = "";
@@ -752,7 +800,9 @@
     toast("Page deleted");
   }
 
-  // View
+  /* =========================
+     View
+     ========================= */
   function setView(v){
     view = v;
     render(focusedId);
@@ -764,7 +814,9 @@
     return items.filter(it => view === "active" ? !it.archived : it.archived);
   }
 
-  // Render
+  /* =========================
+     Render
+     ========================= */
   function getItemById(id){
     return currentPage().items.find(x => x.id === id) || null;
   }
@@ -863,7 +915,9 @@
     }
   }
 
-  // Keys within task input
+  /* =========================
+     Keys within task input
+     ========================= */
   function onKey(e, id){
     const p = currentPage();
     const it = getItemById(id);
@@ -933,7 +987,9 @@
     }
   }
 
-  // + Row
+  /* =========================
+     + Row
+     ========================= */
   function addRow(){
     if (view !== "active") setView("active");
     const p = currentPage();
@@ -950,7 +1006,9 @@
     render(focusedId);
   }
 
-  // Archive actions
+  /* =========================
+     Archive actions
+     ========================= */
   function archiveDone(){
     const p = currentPage();
     const toArchive = p.items.filter(x => !x.archived && x.done);
@@ -1000,7 +1058,9 @@
     render(focusedId);
   }
 
-  // Today + Ctrl+Alt+T
+  /* =========================
+     Today + Ctrl+Alt+T
+     ========================= */
   function findTodayPageId(){
     for (const [pid, pg] of Object.entries(notebook.pages)){
       if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
@@ -1035,7 +1095,9 @@
     }
   });
 
-  // Move block to Today
+  /* =========================
+     Move block to Today
+     ========================= */
   function getVisibleBlock(list, startId){
     const startIdx = list.findIndex(x => x.id === startId);
     if (startIdx < 0) return { ids: [], nextFocusId: null };
@@ -1090,7 +1152,9 @@
     toast(`Moved ${moving.length}`);
   }
 
-  // Sort toggle (block-safe)
+  /* =========================
+     Sort toggle (block-safe)
+     ========================= */
   function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
 
   function blockify(list){
@@ -1155,7 +1219,9 @@
     toast("Sorted");
   }
 
-  // Clipboard per row
+  /* =========================
+     Copy/Paste per row
+     ========================= */
   async function writeClipboard(text){
     try{
       await navigator.clipboard.writeText(text);
@@ -1278,7 +1344,9 @@
     toast("Pasted");
   }
 
-  // Export/Import/Backup/Restore
+  /* =========================
+     Export/Import/Backup/Restore
+     ========================= */
   function downloadBlob(blob, filename){
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1310,54 +1378,6 @@
     focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
     setView("active");
     toast("Imported JSON");
-  }
-
-  const ARCHIVE_MARKER = "--- ARCHIVE ---";
-
-  function toPlainText(){
-    const p = currentPage();
-    const lines = [];
-    const active = p.items.filter(x => !x.archived);
-    const archived = p.items.filter(x => x.archived);
-
-    for (const it of active) lines.push(formatTxtLine(it));
-    if (archived.length){
-      lines.push(ARCHIVE_MARKER);
-      for (const it of archived) lines.push(formatTxtLine(it));
-    }
-    return lines.join("\n") + "\n";
-  }
-
-  function fromPlainText(text){
-    const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    let inArchive = false;
-    const out = [];
-
-    for (let line of rawLines){
-      if (!line || line.trim() === "") continue;
-      if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
-
-      let indent = 0;
-      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
-      indent = clamp(indent, 0, MAX_INDENT);
-
-      const trimmed = line.trimStart();
-      let done = false;
-      let textPart = trimmed;
-
-      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-      if (m){
-        done = (m[1].toLowerCase() === "x");
-        textPart = m[2] ?? "";
-      }
-      out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
-    }
-
-    if (out.filter(x => !x.archived).length === 0){
-      out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
-    }
-    return out;
   }
 
   function exportTxt(){
@@ -1406,26 +1426,57 @@
     toast("Restored ALL");
   }
 
-  // Ctrl/Cmd+Shift+C/V inside task input (still supported)
-  document.addEventListener("keydown", (e) => {
-    const isMac = navigator.platform.toUpperCase().includes("MAC");
-    const mod = isMac ? e.metaKey : e.ctrlKey;
-    const el = document.activeElement;
-    const inTask = el && el.classList && el.classList.contains("task");
-    if (!mod || !e.shiftKey || !inTask) return;
+  // TXT helpers (existing behavior)
+  const ARCHIVE_MARKER = "--- ARCHIVE ---";
+  function toPlainText(){
+    const p = currentPage();
+    const lines = [];
+    const active = p.items.filter(x => !x.archived);
+    const archived = p.items.filter(x => x.archived);
 
-    if (e.key.toLowerCase() === "c"){
-      if (el.selectionStart !== el.selectionEnd) return;
-      e.preventDefault();
-      if (focusedId) doCopyById(focusedId);
+    for (const it of active) lines.push(formatTxtLine(it));
+    if (archived.length){
+      lines.push(ARCHIVE_MARKER);
+      for (const it of archived) lines.push(formatTxtLine(it));
     }
-    if (e.key.toLowerCase() === "v"){
-      e.preventDefault();
-      if (focusedId) doPasteBelowId(focusedId);
-    }
-  });
+    return lines.join("\n") + "\n";
+  }
 
-  // Wire events
+  function fromPlainText(text){
+    const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    let inArchive = false;
+    const out = [];
+
+    for (let line of rawLines){
+      if (!line || line.trim() === "") continue;
+      if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
+
+      let indent = 0;
+      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+      indent = clamp(indent, 0, MAX_INDENT);
+
+      const trimmed = line.trimStart();
+      let done = false;
+      let textPart = trimmed;
+
+      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if (m){
+        done = (m[1].toLowerCase() === "x");
+        textPart = m[2] ?? "";
+      }
+      out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
+    }
+
+    if (out.filter(x => !x.archived).length === 0){
+      out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+    }
+    return out;
+  }
+
+  /* =========================
+     Wire events
+     ========================= */
   toggleUi.addEventListener("click", toggleUiMode);
 
   pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
