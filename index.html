@@ -30,12 +30,15 @@
       --gap: 12px;
 
       /* Right rail */
-      --rail-w: 150px;
+      --rail-w: 160px;
       --rail-font: 12px;
       --rail-color: rgba(0,0,0,0.40);
       --rail-color-active: rgba(0,0,0,0.72);
       --rail-head-color: rgba(0,0,0,0.42);
       --rail-border: rgba(0,0,0,0.08);
+
+      /* Header search */
+      --search-w: 240px;
     }
 
     *{ box-sizing:border-box; }
@@ -100,16 +103,21 @@
       white-space: nowrap;
       color: rgba(0,0,0,0.65);
     }
-    select.page-select{
+
+    .page-search{
+      width: var(--search-w);
+      max-width: 60vw;
       border: 1px solid rgba(0,0,0,0.12);
       border-radius: 999px;
-      padding: 2px 8px;
+      padding: 4px 10px;
       background: rgba(255,255,255,0.85);
       font: inherit;
-      color: rgba(0,0,0,0.70);
+      color: rgba(0,0,0,0.75);
       outline: none;
       height: 26px;
-      max-width: 260px;
+    }
+    .page-search::placeholder{
+      color: rgba(0,0,0,0.35);
     }
 
     /* ---------- Layout ---------- */
@@ -155,7 +163,6 @@
       letter-spacing: 0.2px;
     }
 
-    /* Category groups as details */
     .rail-groups{
       max-height: calc(100vh - 110px);
       overflow: auto;
@@ -187,6 +194,7 @@
       justify-content: space-between;
       color: var(--rail-head-color);
       font-weight: 600;
+      gap: 8px;
     }
     details.rail-cat > summary::-webkit-details-marker{ display:none; }
     details.rail-cat > summary::after{
@@ -195,6 +203,7 @@
       opacity: .65;
       font-size: 14px;
       line-height: 1;
+      flex: 0 0 auto;
     }
     details.rail-cat[open] > summary::after{
       transform: rotate(-90deg);
@@ -206,6 +215,14 @@
       flex-direction:column;
       gap: 6px;
     }
+
+    .page-row{
+      display:flex;
+      align-items:center;
+      gap: 6px;
+      min-width: 0;
+    }
+
     .page-link{
       text-align:left;
       font-size: var(--rail-font);
@@ -213,10 +230,28 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      flex: 1 1 auto;
+      min-width: 0;
     }
     .page-link.active{
       color: var(--rail-color-active);
       font-weight: 600;
+    }
+
+    .page-rename{
+      flex: 0 0 auto;
+      font-size: 12px;
+      color: rgba(0,0,0,0.30);
+      line-height: 1;
+    }
+    .page-rename:hover{
+      color: rgba(0,0,0,0.75);
+    }
+
+    .rail-empty{
+      color: rgba(0,0,0,0.35);
+      font-size: 11px;
+      margin-top: 6px;
     }
 
     /* ---------- Paper/grid ---------- */
@@ -302,7 +337,7 @@
     .done .task{ text-decoration: line-through; color:#777; }
     .archivedRow .task{ color:#666; }
 
-    /* ---------- Per-row actions ---------- */
+    /* Per-row actions */
     .mini-act{
       font-size: 12px;
       color: rgba(0,0,0,0.42);
@@ -311,8 +346,6 @@
     }
     .mini-act:hover{ color: rgba(0,0,0,0.85); }
     .mini-act:disabled{ opacity: .25; }
-
-    /* Copy/Paste are visible in compact mode (same as →) */
 
     /* ---------- Sidebar (chevrons) ---------- */
     .side-block{
@@ -358,7 +391,7 @@
       gap: 8px;
     }
 
-    /* ---------- Bottom actions: together ---------- */
+    /* ---------- Bottom actions ---------- */
     .bottom-actions{
       display:flex;
       justify-content:center;
@@ -425,8 +458,9 @@
         --act-col: 72px;
         --indent-step: 18px;
         --sidebar-w: 180px;
-        --rail-w: 130px;
+        --rail-w: 135px;
         --rail-font: 11px;
+        --search-w: 190px;
       }
       .task{ font-size:16px; }
       .header-inner{ gap: 8px; }
@@ -438,9 +472,8 @@
 <header>
   <div class="header-inner">
     <span class="title" id="toggleUi" title="Tap to hide/show sidebar">Tiny Todo</span>
-    <select class="page-select" id="pageSelect" title="Pages"></select>
+    <input id="pageSearch" class="page-search" type="text" placeholder="Search pages…" autocomplete="off" />
     <button type="button" id="newPage">+ Page</button>
-    <button type="button" id="renamePage">Rename</button>
   </div>
 </header>
 
@@ -502,7 +535,7 @@
       style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
   </main>
 
-  <!-- ✅ Grouped + collapsible pages rail -->
+  <!-- ✅ Grouped + collapsible pages rail with rename icon -->
   <aside class="pages-rail" aria-label="Pages rail">
     <div class="rail-title">Pages</div>
     <div class="rail-groups" id="pagesRail"></div>
@@ -526,11 +559,10 @@
   const toastEl = document.getElementById("toast");
   const statusEl = document.getElementById("status");
 
-  const pageSelect = document.getElementById("pageSelect");
+  const pageSearch = document.getElementById("pageSearch");
   const pagesRail = document.getElementById("pagesRail");
 
   const newPageBtn = document.getElementById("newPage");
-  const renamePageBtn = document.getElementById("renamePage");
 
   const grid = document.getElementById("grid");
   const addRowBtn = document.getElementById("addRowBtn");
@@ -567,9 +599,12 @@
   }
   applyUiMode();
 
+  // Search state
+  let railQuery = "";
+
   // App state
   let notebook = loadNotebook() || seedNotebook();
-  let view = "active";   // "active" | "archive"
+  let view = "active";
   let focusedId = null;
 
   function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
@@ -635,10 +670,10 @@
     return c ? c : UNCATEGORIZED;
   }
 
-  // Parse rename input:
+  // Rename input:
   // - If contains "::": set category + name
-  // - Else: change name only, keep category (Option A)
-  function parseRenameInput(raw, currentCategory, currentName){
+  // - Else: rename only, keep category (Option A)
+  function parseRenameInput(raw, currentCategory){
     const s = String(raw || "").trim();
     if (!s) return null;
 
@@ -646,24 +681,25 @@
     if (idx >= 0){
       const catPart = s.slice(0, idx).trim();
       const namePart = s.slice(idx + 2).trim();
-      if (!namePart) return null; // require a name
-      return {
-        category: normalizeCategory(catPart),
-        name: namePart
-      };
+      if (!namePart) return null;
+      return { category: normalizeCategory(catPart), name: namePart };
     }
-
-    // No category specified -> keep existing category, rename only
-    if (!s) return null;
-    return {
-      category: normalizeCategory(currentCategory),
-      name: s
-    };
+    return { category: normalizeCategory(currentCategory), name: s };
   }
 
   /* =========================
-     Data model
-     pages keyed by id, each page has category metadata
+     Search (category + page name)
+     ========================= */
+  function norm(s){ return String(s || "").toLowerCase(); }
+
+  function pageMatchesQuery(p, q){
+    if (!q) return true;
+    const hay = (norm(p.category) + " " + norm(p.name));
+    return hay.includes(q);
+  }
+
+  /* =========================
+     Data model (pages keyed by id, page.category exists)
      ========================= */
   function seedItems(){
     return [
@@ -730,7 +766,7 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-      // migrate v2 -> v3 (single list)
+      // migrate v2 -> v3
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -780,7 +816,6 @@
 
   function saveNotebook(){
     localStorage.setItem(KEY_V3, JSON.stringify(notebook));
-    rebuildPageSelect();
     rebuildPagesRail();
     updateSortLabel();
   }
@@ -788,23 +823,10 @@
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
   /* =========================
-     Pages UI
+     Pages Rail (grouped, collapsible, searchable) + Rename icon
      ========================= */
   function getSortedPages(){
     return Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
-  }
-
-  function rebuildPageSelect(){
-    const pages = getSortedPages();
-    pageSelect.innerHTML = "";
-    for (const p of pages){
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.name;
-      pageSelect.appendChild(opt);
-    }
-    pageSelect.value = notebook.activePageId;
-    deletePageBtn.disabled = Object.keys(notebook.pages).length <= 1;
   }
 
   function catStorageKey(cat){
@@ -822,7 +844,9 @@
   }
 
   function rebuildPagesRail(){
-    const pages = getSortedPages();
+    const q = norm(railQuery);
+    const pagesAll = getSortedPages();
+    const pages = pagesAll.filter(p => pageMatchesQuery(p, q));
 
     // Group by category
     const groups = new Map();
@@ -832,6 +856,16 @@
       groups.get(cat).push(p);
     }
 
+    // If no matches, show empty message
+    pagesRail.innerHTML = "";
+    if (pages.length === 0){
+      const div = document.createElement("div");
+      div.className = "rail-empty";
+      div.textContent = "No matches";
+      pagesRail.appendChild(div);
+      return;
+    }
+
     // Category sort (Uncategorized last)
     const cats = Array.from(groups.keys()).sort((a,b) => {
       if (a === UNCATEGORIZED && b !== UNCATEGORIZED) return 1;
@@ -839,14 +873,17 @@
       return a.localeCompare(b);
     });
 
-    pagesRail.innerHTML = "";
-
     for (const cat of cats){
       const details = document.createElement("details");
       details.className = "rail-cat";
 
-      // open unless previously closed
-      if (!isCatClosed(cat)) details.open = true;
+      // If searching: auto-open to show results.
+      // If not searching: respect persisted state.
+      if (q){
+        details.open = true;
+      } else {
+        if (!isCatClosed(cat)) details.open = true;
+      }
 
       const summary = document.createElement("summary");
       summary.textContent = cat;
@@ -855,20 +892,38 @@
       list.className = "rail-pages";
 
       for (const p of groups.get(cat)){
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "page-link" + (p.id === notebook.activePageId ? " active" : "");
-        b.textContent = p.name;
-        b.title = `${cat}::${p.name}`;
-        b.addEventListener("click", () => switchPage(p.id));
-        list.appendChild(b);
+        const row = document.createElement("div");
+        row.className = "page-row";
+
+        const link = document.createElement("button");
+        link.type = "button";
+        link.className = "page-link" + (p.id === notebook.activePageId ? " active" : "");
+        link.textContent = p.name;
+        link.title = `${normalizeCategory(p.category)}::${p.name}`;
+        link.addEventListener("click", () => switchPage(p.id));
+
+        const ren = document.createElement("button");
+        ren.type = "button";
+        ren.className = "page-rename";
+        ren.textContent = "✎";
+        ren.title = "Rename (Category::Name)";
+        ren.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          renamePageById(p.id);
+        });
+
+        row.appendChild(link);
+        row.appendChild(ren);
+        list.appendChild(row);
       }
 
       details.appendChild(summary);
       details.appendChild(list);
 
-      // persist toggle state
+      // persist toggle state only when NOT searching
       details.addEventListener("toggle", () => {
+        if (q) return;
         setCatClosed(cat, !details.open);
       });
 
@@ -903,19 +958,23 @@
     toast("Page created");
   }
 
-  function renamePage(){
-    const p = currentPage();
+  function renamePageById(pageId){
+    const p = notebook.pages[pageId];
+    if (!p) return;
+
     const prefill = `${normalizeCategory(p.category)}::${p.name}`;
     const raw = prompt("Rename (Category::Name or Name):", prefill);
     if (raw == null) return;
 
-    const parsed = parseRenameInput(raw, p.category, p.name);
+    const parsed = parseRenameInput(raw, p.category);
     if (!parsed) return;
 
     p.name = parsed.name;
     p.category = parsed.category;
 
     saveNotebook();
+
+    // keep current page active; if renamed page is active, no change needed
     toast("Renamed");
   }
 
@@ -1223,7 +1282,6 @@
     toast("Today");
   }
 
-  // Ctrl+Alt+T
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
       e.preventDefault();
@@ -1600,12 +1658,53 @@
     view = "active";
     focusedId = null;
     saveNotebook();
-    rebuildPageSelect();
     rebuildPagesRail();
     setView("active");
     render(null);
     toast("Restored ALL");
   }
+
+  /* =========================
+     Sort label update
+     ========================= */
+  function updateSortLabel(){
+    const p = currentPage();
+    sortBtn.textContent = (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length) ? "Unsort" : "Sort A→Z";
+  }
+
+  /* =========================
+     Search box behavior
+     - live filter
+     - Esc clears
+     - Enter: if exactly 1 match, jump
+     ========================= */
+  function getMatchingPageIds(q){
+    const qq = norm(q);
+    const pages = getSortedPages().filter(p => pageMatchesQuery(p, qq));
+    return pages.map(p => p.id);
+  }
+
+  pageSearch.addEventListener("input", () => {
+    railQuery = pageSearch.value || "";
+    rebuildPagesRail();
+  });
+
+  pageSearch.addEventListener("keydown", (e) => {
+    if (e.key === "Escape"){
+      e.preventDefault();
+      pageSearch.value = "";
+      railQuery = "";
+      rebuildPagesRail();
+      pageSearch.blur();
+    }
+    if (e.key === "Enter"){
+      const ids = getMatchingPageIds(pageSearch.value || "");
+      if (ids.length === 1){
+        e.preventDefault();
+        switchPage(ids[0]);
+      }
+    }
+  });
 
   /* =========================
      Ctrl/Cmd+Shift+C/V in task input
@@ -1629,13 +1728,49 @@
   });
 
   /* =========================
-     Wire events + Init
+     Ctrl+Alt+T => Today (always Active)
+     ========================= */
+  function findTodayPageId(){
+    for (const [pid, pg] of Object.entries(notebook.pages)){
+      if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
+    }
+    return null;
+  }
+
+  function ensureTodayPage(){
+    let pid = findTodayPageId();
+    if (pid && notebook.pages[pid]) return pid;
+    pid = uid();
+    notebook.pages[pid] = {
+      id: pid,
+      name: "Today",
+      category: UNCATEGORIZED,
+      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
+      sortUndo: null
+    };
+    return pid;
+  }
+
+  function goToTodayPage(){
+    const todayId = ensureTodayPage();
+    switchPage(todayId);
+    setView("active");
+    toast("Today");
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
+      e.preventDefault();
+      goToTodayPage();
+    }
+  });
+
+  /* =========================
+     Wire events
      ========================= */
   toggleUi.addEventListener("click", toggleUiMode);
 
-  pageSelect.addEventListener("change", () => switchPage(pageSelect.value));
   newPageBtn.addEventListener("click", newPage);
-  renamePageBtn.addEventListener("click", renamePage);
 
   addRowBtn.addEventListener("click", addRow);
   sortBtn.addEventListener("click", sortOrUnsort);
@@ -1680,7 +1815,6 @@
   deletePageBtn.addEventListener("click", deletePage);
 
   // Init
-  rebuildPageSelect();
   rebuildPagesRail();
   focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
   setView("active");
@@ -1690,4 +1824,3 @@
 </script>
 </body>
 </html>
-``
