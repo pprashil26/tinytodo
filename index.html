@@ -69,7 +69,18 @@ header{position:sticky;top:0;z-index:20;background:rgba(244,244,244,.9);backdrop
 .side-block{border:1px solid rgba(0,0,0,.08);border-radius:12px;background:rgba(255,255,255,.55);padding:8px}
 details.group{border-top:1px solid rgba(0,0,0,.08);padding-top:8px;margin-top:8px}
 details.group:first-child{border-top:none;padding-top:0;margin-top:0}
-summary.group-sum{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;color:#555;font-weight:600}
+
+/* ✅ CHANGED: left panel headings now match right rail subtle grey */
+summary.group-sum{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  user-select:none;
+  color: var(--rail-head-color); /* rgba(0,0,0,.42) */
+  font-weight:600;
+}
 summary.group-sum::-webkit-details-marker{display:none}
 summary.group-sum::after{content:"›";transform:rotate(90deg);opacity:.65}
 details[open] summary.group-sum::after{transform:rotate(-90deg)}
@@ -87,14 +98,10 @@ details[open] summary.group-sum::after{transform:rotate(-90deg)}
 .row{display:grid;grid-template-columns:var(--check-col) 1fr var(--act-col);align-items:center;min-height:var(--row-h)}
 .cell{padding:0 var(--pad-x);height:var(--row-h);display:flex;align-items:center;min-width:0}
 .cell.check{justify-content:center;border-right:1px solid rgba(40,60,90,.08)}
-.cell.text{
-  padding-left:calc(var(--pad-x) + (var(--indentLevel) * var(--indent-step)));
-  position:relative; /* for chevron overlay */
-}
+.cell.text{padding-left:calc(var(--pad-x) + (var(--indentLevel) * var(--indent-step)));position:relative}
 .cell.act{justify-content:flex-end;gap:4px;border-left:1px solid rgba(40,60,90,.06);padding-right:6px}
 
 input[type="checkbox"]{width:14px;height:14px;margin:0;accent-color:#222}
-
 .task{
   width:100%;
   height:calc(var(--row-h) - 2px);
@@ -104,7 +111,6 @@ input[type="checkbox"]{width:14px;height:14px;margin:0;accent-color:#222}
 }
 .done .task{text-decoration:line-through;color:#777}
 .archivedRow .task{color:#666}
-
 .mini-act{font-size:12px;color:rgba(0,0,0,.42);line-height:1;padding:0 1px}
 .mini-act:hover{color:rgba(0,0,0,.85)}
 .mini-act:disabled{opacity:.25}
@@ -115,35 +121,16 @@ input[type="checkbox"]{width:14px;height:14px;margin:0;accent-color:#222}
 .imp-btn:hover{color:var(--imp-on)}
 
 /* Expand chevron */
-.exp-btn{
-  position:absolute;
-  right:6px;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:12px;
-  color:var(--exp-off);
-  padding:0 1px;
-}
+.exp-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--exp-off);padding:0 1px}
 .exp-btn:hover{color:var(--exp-on)}
 .exp-btn.active{color:var(--exp-on)}
 
-/* Expanded preview row (read-only) */
-.expandRow{
-  display:grid;
-  grid-template-columns:var(--check-col) 1fr var(--act-col);
-  align-items:stretch;
-}
-.expandRow .cell{height:auto; align-items:flex-start; padding-top:4px; padding-bottom:8px;}
+/* Expanded preview row */
+.expandRow{display:grid;grid-template-columns:var(--check-col) 1fr var(--act-col);align-items:stretch}
+.expandRow .cell{height:auto;align-items:flex-start;padding-top:4px;padding-bottom:8px}
 .expandRow .cell.check{border-right:1px solid rgba(40,60,90,.08)}
 .expandRow .cell.act{border-left:1px solid rgba(40,60,90,.06)}
-.previewText{
-  width:100%;
-  color:var(--exp-preview);
-  font-size:12px;
-  line-height:1.3;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
+.previewText{width:100%;color:var(--exp-preview);font-size:12px;line-height:1.3;white-space:pre-wrap;word-break:break-word}
 
 /* Bottom */
 .bottom-actions{display:flex;justify-content:center;gap:14px;align-items:center;margin-top:10px;padding:0 2px;font-size:12px}
@@ -318,34 +305,15 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const fileAll=document.getElementById("fileAll");
   const clipFallback=document.getElementById("clipFallback");
 
-  // UI compact
   let uiCompact=(localStorage.getItem(UI_KEY)==="1");
   function applyUiMode(){ body.classList.toggle("compact", uiCompact); }
   function toggleUiMode(){ uiCompact=!uiCompact; localStorage.setItem(UI_KEY, uiCompact?"1":"0"); applyUiMode(); }
   applyUiMode();
 
-  // important filter
   let filterImportantOnly=(localStorage.getItem(FILTER_KEY)==="1");
   function applyImportantFilterUI(){ importantFilterBtn.classList.toggle("active", filterImportantOnly); }
   applyImportantFilterUI();
 
-  // expand state (per page+view) in memory
-  const expandedMap = new Map(); // key: `${pageId}|${view}` => Set(itemId)
-  function expKey(){ return `${notebook.activePageId}|${view}`; }
-  function expandedSet(){
-    const k=expKey();
-    if(!expandedMap.has(k)) expandedMap.set(k, new Set());
-    return expandedMap.get(k);
-  }
-  function isExpanded(id){ return expandedSet().has(id); }
-  function toggleExpanded(id){
-    const s=expandedSet();
-    if(s.has(id)) s.delete(id); else s.add(id);
-  }
-  const LONG_THRESHOLD = 80;
-  function isLongText(t){ return (String(t||"").trim().length > LONG_THRESHOLD); }
-
-  // state
   let railQuery="";
   let notebook=loadNotebook()||seedNotebook();
   let view="active";
@@ -363,6 +331,19 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toastTimer=setTimeout(()=>{ toastEl.style.display="none"; toastEl.textContent=""; statusEl.textContent=""; },900);
   }
 
+  // expanded state per page+view (memory only)
+  const expandedMap=new Map();
+  function expKey(){ return `${notebook.activePageId}|${view}`; }
+  function expandedSet(){
+    const k=expKey();
+    if(!expandedMap.has(k)) expandedMap.set(k,new Set());
+    return expandedMap.get(k);
+  }
+  function isExpanded(id){ return expandedSet().has(id); }
+  function toggleExpanded(id){ const s=expandedSet(); if(s.has(id)) s.delete(id); else s.add(id); }
+  const LONG_THRESHOLD=80;
+  function isLongText(t){ return (String(t||"").trim().length>LONG_THRESHOLD); }
+
   // datetime shortcuts
   function pad2(n){ return String(n).padStart(2,"0"); }
   function fmtDateShort(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
@@ -376,16 +357,16 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   }
   document.addEventListener("keydown",(e)=>{
     const el=document.activeElement;
-    const inTask=el && el.classList && el.classList.contains("task");
+    const inTask=el&&el.classList&&el.classList.contains("task");
     if(!inTask) return;
-    if(!(e.ctrlKey && e.altKey) || e.metaKey) return;
+    if(!(e.ctrlKey&&e.altKey)||e.metaKey) return;
     const k=e.key.toLowerCase();
     if(k==="s"){e.preventDefault();insertAtCursor(el,fmtTimestamp(new Date()));}
     else if(k==="d"){e.preventDefault();insertAtCursor(el,fmtDateShort(new Date()));}
     else if(k==="h"){e.preventDefault();insertAtCursor(el,fmtTimeOnly(new Date()));}
   });
 
-  // category
+  // category + rename syntax
   function normalizeCategory(cat){ const c=String(cat||"").trim(); return c?c:UNCATEGORIZED; }
   function parseRenameInput(raw,currentCategory){
     const s=String(raw||"").trim(); if(!s) return null;
@@ -399,7 +380,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     return {category:normalizeCategory(currentCategory),name:s};
   }
 
-  // search
+  // full-text AND search
   function norm(s){ return String(s||"").toLowerCase(); }
   function tokenize(q){ const s=norm(q).trim(); return s? s.split(/\s+/).filter(Boolean):[]; }
   function pageHaystack(p){
@@ -420,7 +401,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     return true;
   }
 
-  // data
+  // data model
   function seedItems(){
     return [
       {id:uid(),text:"Task",done:false,important:false,indent:0,archived:false,archivedAt:null},
@@ -429,11 +410,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   }
   function seedNotebook(){
     const pid=uid();
-    return {
-      version:1,
-      activePageId:pid,
-      pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:seedItems(),sortUndo:null} }
-    };
+    return {version:1,activePageId:pid,pages:{[pid]:{id:pid,name:"Personal",category:UNCATEGORIZED,items:seedItems(),sortUndo:null}}};
   }
   function normalizeItems(raw){
     if(!Array.isArray(raw)) return [];
@@ -473,11 +450,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       if(raw2){
         const items=normalizeItems(JSON.parse(raw2));
         const pid=uid();
-        const nb=ensureNotebookShape({
-          version:1,
-          activePageId:pid,
-          pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:items.length?items:seedItems(),sortUndo:null} }
-        });
+        const nb=ensureNotebookShape({version:1,activePageId:pid,pages:{[pid]:{id:pid,name:"Personal",category:UNCATEGORIZED,items:items.length?items:seedItems(),sortUndo:null}}});
         localStorage.setItem(KEY_V3,JSON.stringify(nb));
         return nb;
       }
@@ -486,21 +459,9 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       if(raw1){
         const parsed1=JSON.parse(raw1);
         if(Array.isArray(parsed1)){
-          const migrated=parsed1.map(x=>({
-            id:x.id||uid(),
-            text:String(x.text||""),
-            done:!!x.done,
-            important:false,
-            indent:clamp(Number(x.indent||0),0,MAX_INDENT),
-            archived:false,
-            archivedAt:null
-          }));
+          const migrated=parsed1.map(x=>({id:x.id||uid(),text:String(x.text||""),done:!!x.done,important:false,indent:clamp(Number(x.indent||0),0,MAX_INDENT),archived:false,archivedAt:null}));
           const pid=uid();
-          const nb=ensureNotebookShape({
-            version:1,
-            activePageId:pid,
-            pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:migrated.length?migrated:seedItems(),sortUndo:null} }
-          });
+          const nb=ensureNotebookShape({version:1,activePageId:pid,pages:{[pid]:{id:pid,name:"Personal",category:UNCATEGORIZED,items:migrated.length?migrated:seedItems(),sortUndo:null}}});
           localStorage.setItem(KEY_V3,JSON.stringify(nb));
           return nb;
         }
@@ -515,20 +476,17 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   }
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
-  // page ops
+  // page operations
   function switchPage(pageId){
     if(!notebook.pages[pageId]) return;
-    notebook.activePageId=pageId;
-    focusedId=null;
-    saveNotebook();
-    render(null);
+    notebook.activePageId=pageId; focusedId=null;
+    saveNotebook(); render(null);
   }
   function newPage(){
     const name=prompt("Page name:","New Page"); if(!name) return;
     const id=uid();
     notebook.pages[id]={id,name:String(name).trim(),category:UNCATEGORIZED,items:[{id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null}],sortUndo:null};
-    notebook.activePageId=id;
-    focusedId=notebook.pages[id].items[0].id;
+    notebook.activePageId=id; focusedId=notebook.pages[id].items[0].id;
     saveNotebook(); setView("active"); render(focusedId); toast("Page created");
   }
   function renamePageById(pageId){
@@ -551,7 +509,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     saveNotebook(); setView("active"); render(null); toast("Page deleted");
   }
 
-  // today
+  // Today
   function findTodayPageId(){
     for(const [pid,pg] of Object.entries(notebook.pages)){
       if(String(pg.name||"").trim().toLowerCase()==="today") return pid;
@@ -565,19 +523,12 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     notebook.pages[pid]={id:pid,name:"Today",category:UNCATEGORIZED,items:[{id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null}],sortUndo:null};
     return pid;
   }
-  function goToTodayPage(){
-    const todayId=ensureTodayPage();
-    switchPage(todayId);
-    setView("active");
-    toast("Today");
-  }
+  function goToTodayPage(){ const todayId=ensureTodayPage(); switchPage(todayId); setView("active"); toast("Today"); }
   document.addEventListener("keydown",(e)=>{
-    if(e.ctrlKey&&e.altKey&&!e.shiftKey&&!e.metaKey&&e.key.toLowerCase()==="t"){
-      e.preventDefault(); goToTodayPage();
-    }
+    if(e.ctrlKey&&e.altKey&&!e.shiftKey&&!e.metaKey&&e.key.toLowerCase()==="t"){ e.preventDefault(); goToTodayPage(); }
   });
 
-  // view + important filter
+  // View + filter
   function setView(v){ view=v; render(focusedId); toast(v==="active"?"Active":"Archive"); }
   function visibleItems(){
     const items=currentPage().items.filter(it=> view==="active" ? !it.archived : it.archived);
@@ -585,7 +536,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   }
   function getItemById(id){ return currentPage().items.find(x=>x.id===id)||null; }
 
-  // render
+  // Render
   function focusIndex(i){
     const el=grid.querySelector(`.row[data-index="${i}"] .task`);
     if(el) el.focus();
@@ -647,11 +598,10 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       input.addEventListener("keydown",(e)=> onKey(e,it.id));
       cellText.appendChild(input);
 
-      // ✅ Chevron at end of task text area (only for long text)
       if(isLongText(it.text)){
+        const exp=isExpanded(it.id);
         const chev=document.createElement("button");
         chev.type="button";
-        const exp=isExpanded(it.id);
         chev.className="exp-btn"+(exp?" active":"");
         chev.textContent=exp ? "▾" : "▸";
         chev.title=exp ? "Collapse" : "Expand";
@@ -686,11 +636,10 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       row.appendChild(cellCheck); row.appendChild(cellText); row.appendChild(cellAct);
       grid.appendChild(row);
 
-      // ✅ Inline expanded preview row (read-only)
       if(isLongText(it.text) && isExpanded(it.id)){
         const expRow=document.createElement("div");
         expRow.className="expandRow";
-        expRow.dataset.for = it.id;
+        expRow.dataset.for=it.id;
 
         const c1=document.createElement("div");
         c1.className="cell check";
@@ -700,7 +649,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
         c2.style.setProperty("--indentLevel",clamp(it.indent,0,MAX_INDENT));
         const pre=document.createElement("div");
         pre.className="previewText";
-        pre.textContent=it.text || "";
+        pre.textContent=it.text||"";
         c2.appendChild(pre);
 
         const c3=document.createElement("div");
@@ -756,10 +705,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     if(e.key==="Tab"){
       e.preventDefault();
       it.indent=e.shiftKey?clamp(it.indent-1,0,MAX_INDENT):clamp(it.indent+1,0,MAX_INDENT);
-      p.sortUndo=null;
-      saveNotebook();
-      render(it.id);
-      return;
+      p.sortUndo=null; saveNotebook(); render(it.id); return;
     }
 
     if(e.key==="Backspace"){
@@ -792,7 +738,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
   }
 
-  // add row
+  // Add row
   function addRow(){
     if(view!=="active") setView("active");
     const p=currentPage();
@@ -806,7 +752,52 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     render(focusedId);
   }
 
-  // archive actions
+  // Sort/Unsort
+  function normTitle(s){ return String(s||"").trim().toLocaleLowerCase(); }
+  function blockify(list){
+    const blocks=[]; let current=null;
+    for(const it of list){
+      const isTop=(Number(it.indent)===0);
+      if(isTop||!current){ current={key:normTitle(it.text),items:[it]}; blocks.push(current); }
+      else current.items.push(it);
+    }
+    for(const b of blocks) if(!b.key) b.key="";
+    return blocks;
+  }
+  function updateSortLabel(){
+    const p=currentPage();
+    sortBtn.textContent=(p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length) ? "Unsort" : "Sort A→Z";
+  }
+  function sortOrUnsort(){
+    const p=currentPage();
+    if(p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
+      const snapshot=p.sortUndo.ids.slice();
+      const byId=new Map(p.items.map(x=>[x.id,x]));
+      const restored=[];
+      for(const id of snapshot){ const it=byId.get(id); if(it) restored.push(it); }
+      const restoredIds=new Set(restored.map(x=>x.id));
+      for(const it of p.items) if(!restoredIds.has(it.id)) restored.push(it);
+      p.items=restored;
+      p.sortUndo=null;
+      saveNotebook();
+      render(focusedId);
+      toast("Unsorted");
+      return;
+    }
+    p.sortUndo={ids:p.items.map(x=>x.id),savedAt:Date.now()};
+    const active=p.items.filter(x=>!x.archived);
+    const archived=p.items.filter(x=>x.archived);
+    const target=(view==="active")?active:archived;
+    const blocks=blockify(target);
+    blocks.sort((a,b)=>a.key.localeCompare(b.key));
+    const sortedTarget=blocks.flatMap(b=>b.items);
+    p.items=(view==="active")?[...sortedTarget,...archived]:[...active,...sortedTarget];
+    saveNotebook();
+    render(focusedId);
+    toast("Sorted");
+  }
+
+  // Archive actions
   function archiveDone(){
     const p=currentPage();
     const toArchive=p.items.filter(x=>!x.archived && x.done);
@@ -850,7 +841,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast("Archive emptied");
   }
 
-  // move block to today
+  // Move block to Today
   function getVisibleBlock(list,startId){
     const startIdx=list.findIndex(x=>x.id===startId);
     if(startIdx<0) return {ids:[],nextFocusId:null};
@@ -858,8 +849,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     const block=[list[startIdx]];
     for(let i=startIdx+1;i<list.length;i++){
       const ind=Number(list[i].indent||0);
-      if(ind>startIndent) block.push(list[i]);
-      else break;
+      if(ind>startIndent) block.push(list[i]); else break;
     }
     const after=list[startIdx+block.length];
     const before=list[startIdx-1];
@@ -902,7 +892,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast(`Moved ${moving.length}`);
   }
 
-  // copy/paste block
+  // Clipboard (copy/paste blocks)
   async function writeClipboard(text){
     try{ await navigator.clipboard.writeText(text); return true; }
     catch(e){
@@ -932,8 +922,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     const block=[list[startIdx]];
     for(let i=startIdx+1;i<list.length;i++){
       const ind=Number(list[i].indent||0);
-      if(ind>startIndent) block.push(list[i]);
-      else break;
+      if(ind>startIndent) block.push(list[i]); else break;
     }
     return block;
   }
@@ -969,8 +958,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
         const next=p.items[end];
         if(next.archived) break;
         const ind=Number(next.indent||0);
-        if(ind>startIndent) end++;
-        else break;
+        if(ind>startIndent) end++; else break;
       }
       insertIndex=end;
     }
@@ -996,6 +984,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     insertItemsBelowId(rowId,items);
     toast("Pasted");
   }
+
   // Ctrl/Cmd+Shift+C/V
   document.addEventListener("keydown",(e)=>{
     const isMac=navigator.platform.toUpperCase().includes("MAC");
@@ -1014,55 +1003,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
   });
 
-  // sort/unsort
-  function normTitle(s){ return String(s||"").trim().toLocaleLowerCase(); }
-  function blockify(list){
-    const blocks=[]; let current=null;
-    for(const it of list){
-      const isTop=(Number(it.indent)===0);
-      if(isTop||!current){ current={key:normTitle(it.text),items:[it]}; blocks.push(current); }
-      else current.items.push(it);
-    }
-    for(const b of blocks) if(!b.key) b.key="";
-    return blocks;
-  }
-  function updateSortLabel(){
-    const p=currentPage();
-    sortBtn.textContent=(p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length) ? "Unsort" : "Sort A→Z";
-  }
-  function sortOrUnsort(){
-    const p=currentPage();
-    if(p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
-      const snapshot=p.sortUndo.ids.slice();
-      const byId=new Map(p.items.map(x=>[x.id,x]));
-      const restored=[];
-      for(const id of snapshot){ const it=byId.get(id); if(it) restored.push(it); }
-      const restoredIds=new Set(restored.map(x=>x.id));
-      for(const it of p.items) if(!restoredIds.has(it.id)) restored.push(it);
-      p.items=restored;
-      p.sortUndo=null;
-      saveNotebook();
-      render(focusedId);
-      toast("Unsorted");
-      return;
-    }
-
-    p.sortUndo={ids:p.items.map(x=>x.id),savedAt:Date.now()};
-    const active=p.items.filter(x=>!x.archived);
-    const archived=p.items.filter(x=>x.archived);
-    const target=(view==="active")?active:archived;
-
-    const blocks=blockify(target);
-    blocks.sort((a,b)=>a.key.localeCompare(b.key));
-    const sortedTarget=blocks.flatMap(b=>b.items);
-
-    p.items=(view==="active")?[...sortedTarget,...archived]:[...active,...sortedTarget];
-    saveNotebook();
-    render(focusedId);
-    toast("Sorted");
-  }
-
-  // export/import/backup/restore
+  // Export/Import/Backup/Restore
   function downloadBlob(blob,filename){
     const a=document.createElement("a");
     a.href=URL.createObjectURL(blob);
@@ -1171,7 +1112,7 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     toast("Restored ALL");
   }
 
-  // rail state persistence
+  // Rail collapse persistence
   function catStorageKey(cat){ return RAIL_KEY_PREFIX+encodeURIComponent(cat); }
   function isCatClosed(cat){ return localStorage.getItem(catStorageKey(cat))==="1"; }
   function setCatClosed(cat,closed){
@@ -1358,7 +1299,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     return {pagesMatched,taskHits};
   }
 
-  // important filter toggle
   importantFilterBtn.addEventListener("click",()=>{
     filterImportantOnly=!filterImportantOnly;
     localStorage.setItem(FILTER_KEY,filterImportantOnly?"1":"0");
@@ -1366,7 +1306,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     render(focusedId);
   });
 
-  // search wiring
   pageSearch.addEventListener("input",()=>{ railQuery=pageSearch.value||""; rebuildRail(); });
   pageSearch.addEventListener("keydown",(e)=>{
     if(e.key==="Escape"){
@@ -1386,23 +1325,19 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     }
   });
 
-  // wire file inputs
   function wireFileInput(btn,input,handler){
     btn.addEventListener("click",()=>input.click());
     input.addEventListener("change",async ()=>{
-      const f=input.files[0];
-      if(!f) return;
+      const f=input.files[0]; if(!f) return;
       try{ await handler(f); }
       catch(e){ alert(e.message||String(e)); }
       finally{ input.value=""; }
     });
   }
 
-  // wire buttons
   toggleUi.addEventListener("click",toggleUiMode);
   newPageBtn.addEventListener("click",newPage);
   todayBtn.addEventListener("click",goToTodayPage);
-
   addRowBtn.addEventListener("click",addRow);
   sortBtn.addEventListener("click",sortOrUnsort);
 
