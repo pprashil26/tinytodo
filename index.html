@@ -23,17 +23,19 @@
       --indent-step: 16px;
       --max-indent: 6;
 
-      /* ✅ A5 page width */
+      /* A5 page width */
       --page-w: 148mm;
 
       --sidebar-w: 185px;
       --gap: 12px;
 
-      /* Pages rail */
-      --rail-w: 140px;
+      /* Right rail */
+      --rail-w: 150px;
       --rail-font: 12px;
       --rail-color: rgba(0,0,0,0.40);
-      --rail-color-active: rgba(0,0,0,0.70);
+      --rail-color-active: rgba(0,0,0,0.72);
+      --rail-head-color: rgba(0,0,0,0.42);
+      --rail-border: rgba(0,0,0,0.08);
     }
 
     *{ box-sizing:border-box; }
@@ -107,7 +109,7 @@
       color: rgba(0,0,0,0.70);
       outline: none;
       height: 26px;
-      max-width: 240px;
+      max-width: 260px;
     }
 
     /* ---------- Layout ---------- */
@@ -152,15 +154,59 @@
       margin: 6px 0 8px;
       letter-spacing: 0.2px;
     }
-    .pages-rail .pages-list{
-      display:flex;
-      flex-direction:column;
-      gap: 6px;
+
+    /* Category groups as details */
+    .rail-groups{
       max-height: calc(100vh - 110px);
       overflow: auto;
       padding-right: 4px;
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
     }
-    .pages-rail .page-link{
+    .rail-groups::-webkit-scrollbar{ width: 6px; }
+    .rail-groups::-webkit-scrollbar-thumb{
+      background: rgba(0,0,0,0.10);
+      border-radius: 999px;
+    }
+
+    details.rail-cat{
+      border-top: 1px solid var(--rail-border);
+      padding-top: 6px;
+    }
+    details.rail-cat:first-child{
+      border-top:none;
+      padding-top:0;
+    }
+    details.rail-cat > summary{
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      color: var(--rail-head-color);
+      font-weight: 600;
+    }
+    details.rail-cat > summary::-webkit-details-marker{ display:none; }
+    details.rail-cat > summary::after{
+      content: "›";
+      transform: rotate(90deg);
+      opacity: .65;
+      font-size: 14px;
+      line-height: 1;
+    }
+    details.rail-cat[open] > summary::after{
+      transform: rotate(-90deg);
+    }
+
+    .rail-pages{
+      margin-top: 6px;
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+    }
+    .page-link{
       text-align:left;
       font-size: var(--rail-font);
       color: var(--rail-color);
@@ -168,14 +214,9 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .pages-rail .page-link.active{
+    .page-link.active{
       color: var(--rail-color-active);
       font-weight: 600;
-    }
-    .pages-rail .pages-list::-webkit-scrollbar{ width: 6px; }
-    .pages-rail .pages-list::-webkit-scrollbar-thumb{
-      background: rgba(0,0,0,0.10);
-      border-radius: 999px;
     }
 
     /* ---------- Paper/grid ---------- */
@@ -271,9 +312,7 @@
     .mini-act:hover{ color: rgba(0,0,0,0.85); }
     .mini-act:disabled{ opacity: .25; }
 
-    /* Compact mode: hide copy/paste (only → visible) */
-    body.compact .mini-copy,
-    body.compact .mini-paste{ display:none !important; }
+    /* Copy/Paste are visible in compact mode (same as →) */
 
     /* ---------- Sidebar (chevrons) ---------- */
     .side-block{
@@ -294,7 +333,7 @@
       margin-top:0;
     }
 
-    summary{
+    summary.group-sum{
       list-style:none;
       cursor:pointer;
       display:flex;
@@ -304,13 +343,13 @@
       color:#555;
       font-weight:600;
     }
-    summary::-webkit-details-marker{ display:none; }
-    summary::after{
+    summary.group-sum::-webkit-details-marker{ display:none; }
+    summary.group-sum::after{
       content:"›";
       transform: rotate(90deg);
       opacity:.65;
     }
-    details[open] summary::after{ transform: rotate(-90deg); }
+    details[open] summary.group-sum::after{ transform: rotate(-90deg); }
 
     .group-body{
       margin-top: 8px;
@@ -354,7 +393,7 @@
     /* ---------- Compact mode layout ---------- */
     body.compact .sidebar{ display:none; }
     body.compact .wrap{
-      display:flex;              /* keep rail visible */
+      display:flex; /* keep rail visible */
       max-width: calc(var(--page-w) + var(--rail-w) + var(--gap));
     }
     body.compact .main{
@@ -386,7 +425,7 @@
         --act-col: 72px;
         --indent-step: 18px;
         --sidebar-w: 180px;
-        --rail-w: 120px;
+        --rail-w: 130px;
         --rail-font: 11px;
       }
       .task{ font-size:16px; }
@@ -411,7 +450,7 @@
   <aside class="sidebar">
     <div class="side-block">
       <details class="group">
-        <summary>Backup</summary>
+        <summary class="group-sum">Backup</summary>
         <div class="group-body">
           <button type="button" id="exportJsonBtn">Export JSON</button>
           <button type="button" id="importJsonBtn">Import JSON</button>
@@ -423,7 +462,7 @@
       </details>
 
       <details class="group">
-        <summary>Archive</summary>
+        <summary class="group-sum">Archive</summary>
         <div class="group-body">
           <button type="button" id="archiveDoneBtn">Archive done</button>
           <button type="button" id="restoreFocusedBtn">Restore focused</button>
@@ -433,7 +472,7 @@
       </details>
 
       <details class="group">
-        <summary>Page / View</summary>
+        <summary class="group-sum">Page / View</summary>
         <div class="group-body">
           <button type="button" id="viewActiveBtn">Active</button>
           <button type="button" id="viewArchiveBtn">Archive</button>
@@ -455,6 +494,7 @@
       <button type="button" id="sortBtn">Sort A→Z</button>
     </div>
 
+    <!-- hidden inputs + clipboard fallback -->
     <input id="fileJson" type="file" accept="application/json">
     <input id="fileTxt" type="file" accept="text/plain,.txt">
     <input id="fileAll" type="file" accept="application/json">
@@ -462,9 +502,10 @@
       style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
   </main>
 
+  <!-- ✅ Grouped + collapsible pages rail -->
   <aside class="pages-rail" aria-label="Pages rail">
     <div class="rail-title">Pages</div>
-    <div class="pages-list" id="pagesRail"></div>
+    <div class="rail-groups" id="pagesRail"></div>
   </aside>
 </div>
 
@@ -474,6 +515,10 @@
   const KEY_V2 = "tiny_todo_v2";
   const KEY_V1 = "tiny_todo_v1";
   const UI_KEY = "tiny_todo_ui_compact";
+
+  const RAIL_KEY_PREFIX = "tiny_todo_rail_closed::";
+  const UNCATEGORIZED = "Uncategorized";
+
   const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
   const body = document.body;
@@ -549,59 +594,76 @@
   }
 
   /* =========================
-     NEW: Insert helpers + 3 shortcuts
+     Insert helpers + shortcuts
      ========================= */
   function pad2(n){ return String(n).padStart(2, "0"); }
-
-  function fmtDateShort(d){
-    // short, stable: YYYY-MM-DD
-    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-  }
-  function fmtTimeOnly(d){
-    // 24h HH:mm
-    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-  }
-  function fmtTimestamp(d){
-    // YYYY-MM-DD HH:mm
-    return `${fmtDateShort(d)} ${fmtTimeOnly(d)}`;
-  }
+  function fmtDateShort(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function fmtTimeOnly(d){ return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+  function fmtTimestamp(d){ return `${fmtDateShort(d)} ${fmtTimeOnly(d)}`; }
 
   function insertAtCursor(el, text){
-    if (!el) return;
     const start = el.selectionStart ?? el.value.length;
     const end = el.selectionEnd ?? el.value.length;
-    const before = el.value.slice(0, start);
-    const after = el.value.slice(end);
-    el.value = before + text + after;
-    const newPos = start + text.length;
-    el.setSelectionRange(newPos, newPos);
-    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    const pos = start + text.length;
+    el.setSelectionRange(pos, pos);
+    el.dispatchEvent(new Event("input", { bubbles:true }));
   }
 
-  // Global shortcuts: only when a task input is focused
-  // Ctrl+Alt+S = timestamp, Ctrl+Alt+D = date, Ctrl+Alt+H = time
+  // Ctrl+Alt+S timestamp, Ctrl+Alt+D date, Ctrl+Alt+H time (only in task input)
   document.addEventListener("keydown", (e) => {
     const el = document.activeElement;
     const inTask = el && el.classList && el.classList.contains("task");
     if (!inTask) return;
-
     if (!(e.ctrlKey && e.altKey) || e.metaKey) return;
 
     const k = e.key.toLowerCase();
-    if (k === "s"){ // timestamp
-      e.preventDefault();
-      insertAtCursor(el, fmtTimestamp(new Date()));
-    } else if (k === "d"){ // date only
-      e.preventDefault();
-      insertAtCursor(el, fmtDateShort(new Date()));
-    } else if (k === "h"){ // time only
-      e.preventDefault();
-      insertAtCursor(el, fmtTimeOnly(new Date()));
+    if (k === "s"){
+      e.preventDefault(); insertAtCursor(el, fmtTimestamp(new Date()));
+    } else if (k === "d"){
+      e.preventDefault(); insertAtCursor(el, fmtDateShort(new Date()));
+    } else if (k === "h"){
+      e.preventDefault(); insertAtCursor(el, fmtTimeOnly(new Date()));
     }
   });
 
   /* =========================
-     Data / Notebook
+     Category parsing (Option A)
+     ========================= */
+  function normalizeCategory(cat){
+    const c = String(cat || "").trim();
+    return c ? c : UNCATEGORIZED;
+  }
+
+  // Parse rename input:
+  // - If contains "::": set category + name
+  // - Else: change name only, keep category (Option A)
+  function parseRenameInput(raw, currentCategory, currentName){
+    const s = String(raw || "").trim();
+    if (!s) return null;
+
+    const idx = s.indexOf("::");
+    if (idx >= 0){
+      const catPart = s.slice(0, idx).trim();
+      const namePart = s.slice(idx + 2).trim();
+      if (!namePart) return null; // require a name
+      return {
+        category: normalizeCategory(catPart),
+        name: namePart
+      };
+    }
+
+    // No category specified -> keep existing category, rename only
+    if (!s) return null;
+    return {
+      category: normalizeCategory(currentCategory),
+      name: s
+    };
+  }
+
+  /* =========================
+     Data model
+     pages keyed by id, each page has category metadata
      ========================= */
   function seedItems(){
     return [
@@ -616,7 +678,7 @@
       version: 1,
       activePageId: pid,
       pages: {
-        [pid]: { id: pid, name: "Personal", items: seedItems(), sortUndo: null }
+        [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: seedItems(), sortUndo: null }
       }
     };
   }
@@ -646,6 +708,8 @@
 
       p.id = pid;
       p.name = String(p.name || "Untitled");
+      p.category = normalizeCategory(p.category);
+
       p.items = normalizeItems(p.items);
       if (!("sortUndo" in p)) p.sortUndo = null;
 
@@ -666,6 +730,7 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
+      // migrate v2 -> v3 (single list)
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -674,13 +739,14 @@
           version: 1,
           activePageId: pid,
           pages: {
-            [pid]: { id: pid, name: "Personal", items: items.length ? items : seedItems(), sortUndo: null }
+            [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: items.length ? items : seedItems(), sortUndo: null }
           }
         });
         localStorage.setItem(KEY_V3, JSON.stringify(nb));
         return nb;
       }
 
+      // migrate v1 -> v3
       const raw1 = localStorage.getItem(KEY_V1);
       if (raw1){
         const parsed1 = JSON.parse(raw1);
@@ -698,7 +764,7 @@
             version: 1,
             activePageId: pid,
             pages: {
-              [pid]: { id: pid, name: "Personal", items: migrated.length ? migrated : seedItems(), sortUndo: null }
+              [pid]: { id: pid, name: "Personal", category: UNCATEGORIZED, items: migrated.length ? migrated : seedItems(), sortUndo: null }
             }
           });
           localStorage.setItem(KEY_V3, JSON.stringify(nb));
@@ -724,8 +790,12 @@
   /* =========================
      Pages UI
      ========================= */
+  function getSortedPages(){
+    return Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
+  }
+
   function rebuildPageSelect(){
-    const pages = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
+    const pages = getSortedPages();
     pageSelect.innerHTML = "";
     for (const p of pages){
       const opt = document.createElement("option");
@@ -737,17 +807,72 @@
     deletePageBtn.disabled = Object.keys(notebook.pages).length <= 1;
   }
 
+  function catStorageKey(cat){
+    return RAIL_KEY_PREFIX + encodeURIComponent(cat);
+  }
+
+  function isCatClosed(cat){
+    return localStorage.getItem(catStorageKey(cat)) === "1";
+  }
+
+  function setCatClosed(cat, closed){
+    const k = catStorageKey(cat);
+    if (closed) localStorage.setItem(k, "1");
+    else localStorage.removeItem(k);
+  }
+
   function rebuildPagesRail(){
-    const pages = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
-    pagesRail.innerHTML = "";
+    const pages = getSortedPages();
+
+    // Group by category
+    const groups = new Map();
     for (const p of pages){
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "page-link" + (p.id === notebook.activePageId ? " active" : "");
-      b.textContent = p.name;
-      b.title = p.name;
-      b.addEventListener("click", () => switchPage(p.id));
-      pagesRail.appendChild(b);
+      const cat = normalizeCategory(p.category);
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(p);
+    }
+
+    // Category sort (Uncategorized last)
+    const cats = Array.from(groups.keys()).sort((a,b) => {
+      if (a === UNCATEGORIZED && b !== UNCATEGORIZED) return 1;
+      if (b === UNCATEGORIZED && a !== UNCATEGORIZED) return -1;
+      return a.localeCompare(b);
+    });
+
+    pagesRail.innerHTML = "";
+
+    for (const cat of cats){
+      const details = document.createElement("details");
+      details.className = "rail-cat";
+
+      // open unless previously closed
+      if (!isCatClosed(cat)) details.open = true;
+
+      const summary = document.createElement("summary");
+      summary.textContent = cat;
+
+      const list = document.createElement("div");
+      list.className = "rail-pages";
+
+      for (const p of groups.get(cat)){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "page-link" + (p.id === notebook.activePageId ? " active" : "");
+        b.textContent = p.name;
+        b.title = `${cat}::${p.name}`;
+        b.addEventListener("click", () => switchPage(p.id));
+        list.appendChild(b);
+      }
+
+      details.appendChild(summary);
+      details.appendChild(list);
+
+      // persist toggle state
+      details.addEventListener("toggle", () => {
+        setCatClosed(cat, !details.open);
+      });
+
+      pagesRail.appendChild(details);
     }
   }
 
@@ -764,7 +889,9 @@
     if (!name) return;
     const id = uid();
     notebook.pages[id] = {
-      id, name: name.trim(),
+      id,
+      name: String(name).trim(),
+      category: UNCATEGORIZED,
       items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
       sortUndo: null
     };
@@ -778,9 +905,16 @@
 
   function renamePage(){
     const p = currentPage();
-    const name = prompt("Rename page:", p.name);
-    if (!name) return;
-    p.name = name.trim();
+    const prefill = `${normalizeCategory(p.category)}::${p.name}`;
+    const raw = prompt("Rename (Category::Name or Name):", prefill);
+    if (raw == null) return;
+
+    const parsed = parseRenameInput(raw, p.category, p.name);
+    if (!parsed) return;
+
+    p.name = parsed.name;
+    p.category = parsed.category;
+
     saveNotebook();
     toast("Renamed");
   }
@@ -873,14 +1007,14 @@
       cellAct.className = "cell act";
 
       const copyMini = document.createElement("button");
-      copyMini.className = "mini-act mini-copy";
+      copyMini.className = "mini-act";
       copyMini.textContent = "⧉";
       copyMini.title = "Copy block";
       copyMini.disabled = (view !== "active");
       copyMini.addEventListener("click", () => doCopyById(it.id));
 
       const pasteMini = document.createElement("button");
-      pasteMini.className = "mini-act mini-paste";
+      pasteMini.className = "mini-act";
       pasteMini.textContent = "⎘";
       pasteMini.title = "Paste below block";
       pasteMini.disabled = (view !== "active");
@@ -1075,6 +1209,7 @@
     notebook.pages[pid] = {
       id: pid,
       name: "Today",
+      category: UNCATEGORIZED,
       items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
       sortUndo: null
     };
@@ -1088,6 +1223,7 @@
     toast("Today");
   }
 
+  // Ctrl+Alt+T
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
       e.preventDefault();
@@ -1380,6 +1516,51 @@
     toast("Imported JSON");
   }
 
+  const ARCHIVE_MARKER = "--- ARCHIVE ---";
+
+  function toPlainText(){
+    const p = currentPage();
+    const lines = [];
+    const active = p.items.filter(x => !x.archived);
+    const archived = p.items.filter(x => x.archived);
+    for (const it of active) lines.push(formatTxtLine(it));
+    if (archived.length){
+      lines.push(ARCHIVE_MARKER);
+      for (const it of archived) lines.push(formatTxtLine(it));
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  function fromPlainText(text){
+    const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    let inArchive = false;
+    const out = [];
+    for (let line of rawLines){
+      if (!line || line.trim() === "") continue;
+      if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
+
+      let indent = 0;
+      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+      indent = clamp(indent, 0, MAX_INDENT);
+
+      const trimmed = line.trimStart();
+      let done = false;
+      let textPart = trimmed;
+
+      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if (m){
+        done = (m[1].toLowerCase() === "x");
+        textPart = m[2] ?? "";
+      }
+      out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
+    }
+    if (out.filter(x => !x.archived).length === 0){
+      out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+    }
+    return out;
+  }
+
   function exportTxt(){
     const p = currentPage();
     const blob = new Blob([toPlainText()], { type:"text/plain;charset=utf-8" });
@@ -1426,56 +1607,29 @@
     toast("Restored ALL");
   }
 
-  // TXT helpers (existing behavior)
-  const ARCHIVE_MARKER = "--- ARCHIVE ---";
-  function toPlainText(){
-    const p = currentPage();
-    const lines = [];
-    const active = p.items.filter(x => !x.archived);
-    const archived = p.items.filter(x => x.archived);
+  /* =========================
+     Ctrl/Cmd+Shift+C/V in task input
+     ========================= */
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!mod || !e.shiftKey || !inTask) return;
 
-    for (const it of active) lines.push(formatTxtLine(it));
-    if (archived.length){
-      lines.push(ARCHIVE_MARKER);
-      for (const it of archived) lines.push(formatTxtLine(it));
+    if (e.key.toLowerCase() === "c"){
+      if (el.selectionStart !== el.selectionEnd) return;
+      e.preventDefault();
+      if (focusedId) doCopyById(focusedId);
     }
-    return lines.join("\n") + "\n";
-  }
-
-  function fromPlainText(text){
-    const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    let inArchive = false;
-    const out = [];
-
-    for (let line of rawLines){
-      if (!line || line.trim() === "") continue;
-      if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
-
-      let indent = 0;
-      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
-      indent = clamp(indent, 0, MAX_INDENT);
-
-      const trimmed = line.trimStart();
-      let done = false;
-      let textPart = trimmed;
-
-      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-      if (m){
-        done = (m[1].toLowerCase() === "x");
-        textPart = m[2] ?? "";
-      }
-      out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
+    if (e.key.toLowerCase() === "v"){
+      e.preventDefault();
+      if (focusedId) doPasteBelowId(focusedId);
     }
-
-    if (out.filter(x => !x.archived).length === 0){
-      out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
-    }
-    return out;
-  }
+  });
 
   /* =========================
-     Wire events
+     Wire events + Init
      ========================= */
   toggleUi.addEventListener("click", toggleUiMode);
 
@@ -1536,3 +1690,4 @@
 </script>
 </body>
 </html>
+``
