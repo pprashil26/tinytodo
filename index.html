@@ -8,7 +8,6 @@
   <style>
     :root{
       --paper:#fcfbf7;
-      --paper-edge:#efece3;
       --paper-line: rgba(40, 60, 90, 0.08);
 
       --text:#111;
@@ -71,8 +70,10 @@
     button:active{ transform: translateY(1px); }
     button:disabled{ opacity:.35; cursor: default; transform:none; }
 
+    /* Hide file inputs */
     input[type="file"]{ display:none !important; }
 
+    /* ---------- Header ---------- */
     header{
       position: sticky;
       top: 0;
@@ -95,7 +96,7 @@
     }
     .title{
       font-weight: 600;
-      cursor: pointer;
+      cursor: pointer; /* toggle compact */
       user-select: none;
       white-space: nowrap;
       color: rgba(0,0,0,0.65);
@@ -114,6 +115,7 @@
     }
     .page-search::placeholder{ color: rgba(0,0,0,0.35); }
 
+    /* ---------- Layout ---------- */
     .wrap{
       width:100%;
       max-width: calc(var(--page-w) + var(--sidebar-w) + var(--rail-w) + (var(--gap) * 2));
@@ -138,6 +140,142 @@
       max-width: var(--page-w);
     }
 
+    /* ---------- Sidebar ---------- */
+    .side-block{
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.55);
+      padding: 8px;
+    }
+    details.group{
+      border-top: 1px solid rgba(0,0,0,0.08);
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+    details.group:first-child{
+      border-top:none;
+      padding-top:0;
+      margin-top:0;
+    }
+    summary.group-sum{
+      list-style:none;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      user-select:none;
+      color:#555;
+      font-weight:600;
+    }
+    summary.group-sum::-webkit-details-marker{ display:none; }
+    summary.group-sum::after{
+      content:"›";
+      transform: rotate(90deg);
+      opacity:.65;
+    }
+    details[open] summary.group-sum::after{ transform: rotate(-90deg); }
+    .group-body{
+      margin-top: 8px;
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+    }
+
+    /* ---------- Paper/Grid ---------- */
+    .paper{
+      border: 1px solid rgba(0,0,0,0.10);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--paper);
+      box-shadow:
+        0 10px 24px rgba(0,0,0,0.08),
+        0 2px 6px rgba(0,0,0,0.06);
+    }
+    .grid{
+      position: relative;
+      background:
+        linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.0) 24px),
+        linear-gradient(to right,
+          transparent 0,
+          transparent calc(var(--check-col) - 1px),
+          rgba(40,60,90,0.10) calc(var(--check-col) - 1px),
+          transparent var(--check-col)
+        ),
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent calc(var(--row-h) - 1px),
+          var(--paper-line) calc(var(--row-h) - 1px),
+          var(--paper-line) var(--row-h)
+        );
+    }
+    .row{
+      display:grid;
+      grid-template-columns: var(--check-col) 1fr var(--act-col);
+      align-items:center;
+      min-height: var(--row-h);
+    }
+    .cell{
+      padding: 0 var(--pad-x);
+      height: var(--row-h);
+      display:flex;
+      align-items:center;
+      min-width:0;
+    }
+    .cell.check{
+      justify-content:center;
+      border-right: 1px solid rgba(40,60,90,0.08);
+    }
+    .cell.text{
+      padding-left: calc(var(--pad-x) + (var(--indentLevel) * var(--indent-step)));
+    }
+    .cell.act{
+      justify-content:flex-end;
+      gap: 4px;
+      border-left: 1px solid rgba(40,60,90,0.06);
+      padding-right: 6px;
+    }
+    input[type="checkbox"]{
+      width: 14px;
+      height: 14px;
+      margin:0;
+      accent-color:#222;
+    }
+    .task{
+      width:100%;
+      height: calc(var(--row-h) - 2px);
+      border:none;
+      outline:none;
+      background: transparent;
+      font: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .done .task{ text-decoration: line-through; color:#777; }
+    .archivedRow .task{ color:#666; }
+
+    .mini-act{
+      font-size: 12px;
+      color: rgba(0,0,0,0.42);
+      line-height: 1;
+      padding: 0 1px;
+    }
+    .mini-act:hover{ color: rgba(0,0,0,0.85); }
+    .mini-act:disabled{ opacity: .25; }
+
+    /* ---------- Bottom actions ---------- */
+    .bottom-actions{
+      display:flex;
+      justify-content:center;
+      gap: 14px;
+      align-items:center;
+      margin-top: 10px;
+      padding: 0 2px;
+      font-size: 12px;
+    }
+
+    /* ---------- Right rail ---------- */
     .pages-rail{
       width: var(--rail-w);
       flex: 0 0 var(--rail-w);
@@ -154,7 +292,6 @@
       margin: 6px 0 8px;
       letter-spacing: 0.2px;
     }
-
     .rail-groups{
       max-height: calc(100vh - 110px);
       overflow: auto;
@@ -173,10 +310,7 @@
       border-top: 1px solid var(--rail-border);
       padding-top: 6px;
     }
-    details.rail-cat:first-child{
-      border-top:none;
-      padding-top:0;
-    }
+    details.rail-cat:first-child{ border-top:none; padding-top:0; }
     details.rail-cat > summary{
       list-style: none;
       cursor: pointer;
@@ -197,9 +331,7 @@
       line-height: 1;
       flex: 0 0 auto;
     }
-    details.rail-cat[open] > summary::after{
-      transform: rotate(-90deg);
-    }
+    details.rail-cat[open] > summary::after{ transform: rotate(-90deg); }
 
     .rail-pages{
       margin-top: 6px;
@@ -207,14 +339,12 @@
       flex-direction:column;
       gap: 6px;
     }
-
     .page-row{
       display:flex;
       align-items:center;
       gap: 6px;
       min-width: 0;
     }
-
     .page-link{
       text-align:left;
       font-size: var(--rail-font);
@@ -229,7 +359,6 @@
       color: var(--rail-color-active);
       font-weight: 600;
     }
-
     .page-rename{
       flex: 0 0 auto;
       font-size: 12px;
@@ -238,24 +367,17 @@
     }
     .page-rename:hover{ color: rgba(0,0,0,0.75); }
 
-    .rail-empty{
-      color: rgba(0,0,0,0.35);
-      font-size: 11px;
-      margin-top: 6px;
-    }
-
+    /* Results mode */
     .results-cat{
       border-top: 1px solid var(--rail-border);
       padding-top: 6px;
     }
     .results-cat:first-child{ border-top:none; padding-top:0; }
-
     .results-cat-title{
       font-weight: 700;
       color: rgba(0,0,0,0.45);
       margin-bottom: 6px;
     }
-
     .results-page{
       margin: 6px 0 10px;
       padding-left: 2px;
@@ -304,147 +426,13 @@
       font-size: 10px;
       margin-right: 6px;
     }
-
-    .paper{
-      border: 1px solid rgba(0,0,0,0.10);
-      border-radius: 14px;
-      overflow: hidden;
-      background: var(--paper);
-      box-shadow:
-        0 10px 24px rgba(0,0,0,0.08),
-        0 2px 6px rgba(0,0,0,0.06);
+    .rail-empty{
+      color: rgba(0,0,0,0.35);
+      font-size: 11px;
+      margin-top: 6px;
     }
 
-    .grid{
-      position: relative;
-      background:
-        linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.0) 24px),
-        linear-gradient(to right,
-          transparent 0,
-          transparent calc(var(--check-col) - 1px),
-          rgba(40,60,90,0.10) calc(var(--check-col) - 1px),
-          transparent var(--check-col)
-        ),
-        repeating-linear-gradient(
-          to bottom,
-          transparent 0,
-          transparent calc(var(--row-h) - 1px),
-          var(--paper-line) calc(var(--row-h) - 1px),
-          var(--paper-line) var(--row-h)
-        );
-    }
-
-    .row{
-      display:grid;
-      grid-template-columns: var(--check-col) 1fr var(--act-col);
-      align-items:center;
-      min-height: var(--row-h);
-    }
-
-    .cell{
-      padding: 0 var(--pad-x);
-      height: var(--row-h);
-      display:flex;
-      align-items:center;
-      min-width:0;
-    }
-    .cell.check{
-      justify-content:center;
-      border-right: 1px solid rgba(40,60,90,0.08);
-    }
-    .cell.text{
-      padding-left: calc(var(--pad-x) + (var(--indentLevel) * var(--indent-step)));
-    }
-    .cell.act{
-      justify-content:flex-end;
-      gap: 4px;
-      border-left: 1px solid rgba(40,60,90,0.06);
-      padding-right: 6px;
-    }
-
-    input[type="checkbox"]{
-      width: 14px;
-      height: 14px;
-      margin:0;
-      accent-color:#222;
-    }
-
-    .task{
-      width:100%;
-      height: calc(var(--row-h) - 2px);
-      border:none;
-      outline:none;
-      background: transparent;
-      font: inherit;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .done .task{ text-decoration: line-through; color:#777; }
-    .archivedRow .task{ color:#666; }
-
-    .mini-act{
-      font-size: 12px;
-      color: rgba(0,0,0,0.42);
-      line-height: 1;
-      padding: 0 1px;
-    }
-    .mini-act:hover{ color: rgba(0,0,0,0.85); }
-    .mini-act:disabled{ opacity: .25; }
-
-    .side-block{
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 12px;
-      background: rgba(255,255,255,0.55);
-      padding: 8px;
-    }
-
-    details.group{
-      border-top: 1px solid rgba(0,0,0,0.08);
-      padding-top: 8px;
-      margin-top: 8px;
-    }
-    details.group:first-child{
-      border-top:none;
-      padding-top:0;
-      margin-top:0;
-    }
-
-    summary.group-sum{
-      list-style:none;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      user-select:none;
-      color:#555;
-      font-weight:600;
-    }
-    summary.group-sum::-webkit-details-marker{ display:none; }
-    summary.group-sum::after{
-      content:"›";
-      transform: rotate(90deg);
-      opacity:.65;
-    }
-    details[open] summary.group-sum::after{ transform: rotate(-90deg); }
-
-    .group-body{
-      margin-top: 8px;
-      display:flex;
-      flex-direction:column;
-      gap: 8px;
-    }
-
-    .bottom-actions{
-      display:flex;
-      justify-content:center;
-      gap: 14px;
-      align-items:center;
-      margin-top: 10px;
-      padding: 0 2px;
-      font-size: 12px;
-    }
-
+    /* ---------- Toast ---------- */
     #toast{
       position: fixed;
       left: 50%;
@@ -465,6 +453,7 @@
       text-overflow: ellipsis;
     }
 
+    /* ---------- Compact mode ---------- */
     body.compact .sidebar{ display:none; }
     body.compact .wrap{
       display:flex;
@@ -520,7 +509,7 @@
 <div class="wrap">
   <aside class="sidebar">
     <div class="side-block">
-      <details class="group">
+      <details class="group" open>
         <summary class="group-sum">Backup</summary>
         <div class="group-body">
           <button type="button" id="exportJsonBtn">Export JSON</button>
@@ -587,6 +576,7 @@
 
   const RAIL_KEY_PREFIX = "tiny_todo_rail_closed::";
   const UNCATEGORIZED = "Uncategorized";
+  const ARCHIVE_MARKER = "--- ARCHIVE ---";
 
   const MAX_INDENT = Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent")) || 6;
 
@@ -627,6 +617,7 @@
   const fileAll = document.getElementById("fileAll");
   const clipFallback = document.getElementById("clipFallback");
 
+  // -------- UI compact toggle --------
   let uiCompact = (localStorage.getItem(UI_KEY) === "1");
   function applyUiMode(){ body.classList.toggle("compact", uiCompact); }
   function toggleUiMode(){
@@ -636,9 +627,10 @@
   }
   applyUiMode();
 
+  // -------- State --------
   let railQuery = "";
   let notebook = loadNotebook() || seedNotebook();
-  let view = "active";
+  let view = "active"; // "active" | "archive"
   let focusedId = null;
 
   function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
@@ -662,11 +654,52 @@
     }, 900);
   }
 
+  // -------- Insert datetime shortcuts --------
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function fmtDateShort(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function fmtTimeOnly(d){ return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+  function fmtTimestamp(d){ return `${fmtDateShort(d)} ${fmtTimeOnly(d)}`; }
+
+  function insertAtCursor(el, text){
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    const pos = start + text.length;
+    el.setSelectionRange(pos, pos);
+    el.dispatchEvent(new Event("input", { bubbles:true }));
+  }
+
+  document.addEventListener("keydown", (e) => {
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!inTask) return;
+    if (!(e.ctrlKey && e.altKey) || e.metaKey) return;
+
+    const k = e.key.toLowerCase();
+    if (k === "s"){ e.preventDefault(); insertAtCursor(el, fmtTimestamp(new Date())); }
+    else if (k === "d"){ e.preventDefault(); insertAtCursor(el, fmtDateShort(new Date())); }
+    else if (k === "h"){ e.preventDefault(); insertAtCursor(el, fmtTimeOnly(new Date())); }
+  });
+
+  // -------- Category + rename syntax --------
   function normalizeCategory(cat){
     const c = String(cat || "").trim();
     return c ? c : UNCATEGORIZED;
   }
+  function parseRenameInput(raw, currentCategory){
+    const s = String(raw || "").trim();
+    if (!s) return null;
+    const idx = s.indexOf("::");
+    if (idx >= 0){
+      const catPart = s.slice(0, idx).trim();
+      const namePart = s.slice(idx + 2).trim();
+      if (!namePart) return null;
+      return { category: normalizeCategory(catPart), name: namePart };
+    }
+    return { category: normalizeCategory(currentCategory), name: s };
+  }
 
+  // -------- Full-text AND search --------
   function norm(s){ return String(s || "").toLowerCase(); }
   function tokenize(q){
     const s = norm(q).trim();
@@ -683,25 +716,23 @@
     return norm(h);
   }
   function pageMatchesTokens(p, tokens){
-    if (!tokens || tokens.length === 0) return true;
+    if (!tokens.length) return true;
     const hay = pageHaystack(p);
     for (const t of tokens){
       if (!hay.includes(t)) return false;
     }
     return true;
   }
-  function itemMatchesTokens(itemText, tokens){
-    if (!tokens || tokens.length === 0) return true;
-    const hay = norm(itemText || "");
+  function itemMatchesTokens(text, tokens){
+    if (!tokens.length) return true;
+    const hay = norm(text || "");
     for (const t of tokens){
       if (!hay.includes(t)) return false;
     }
     return true;
   }
 
-  /* -------------------------
-     ✅ FIX: pages are keyed by pageId (computed property)
-     ------------------------- */
+  // -------- Data model --------
   function seedItems(){
     return [
       { id: uid(), text: "Task", done:false, indent:0, archived:false, archivedAt:null },
@@ -709,6 +740,7 @@
     ];
   }
 
+  // ✅ IMPORTANT: pages object keyed by [pid]
   function seedNotebook(){
     const pid = uid();
     return {
@@ -746,7 +778,6 @@
       p.id = pid;
       p.name = String(p.name || "Untitled");
       p.category = normalizeCategory(p.category);
-
       p.items = normalizeItems(p.items);
       if (!("sortUndo" in p)) p.sortUndo = null;
 
@@ -767,7 +798,7 @@
       const raw3 = localStorage.getItem(KEY_V3);
       if (raw3) return ensureNotebookShape(JSON.parse(raw3));
 
-      // ✅ FIX migration v2 -> v3
+      // migrate v2 -> v3 (single list)
       const raw2 = localStorage.getItem(KEY_V2);
       if (raw2){
         const items = normalizeItems(JSON.parse(raw2));
@@ -783,7 +814,7 @@
         return nb;
       }
 
-      // ✅ FIX migration v1 -> v3
+      // migrate v1 -> v3 (older array)
       const raw1 = localStorage.getItem(KEY_V1);
       if (raw1){
         const parsed1 = JSON.parse(raw1);
@@ -808,6 +839,7 @@
           return nb;
         }
       }
+
       return null;
     }catch(e){
       return null;
@@ -822,6 +854,717 @@
 
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
 
+  // -------- Page operations --------
+  function switchPage(pageId){
+    if (!notebook.pages[pageId]) return;
+    notebook.activePageId = pageId;
+    focusedId = null;
+    saveNotebook();
+    render(null);
+  }
+
+  function newPage(){
+    const name = prompt("Page name:", "New Page");
+    if (!name) return;
+    const id = uid();
+    notebook.pages[id] = {
+      id,
+      name: String(name).trim(),
+      category: UNCATEGORIZED,
+      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
+      sortUndo: null
+    };
+    notebook.activePageId = id;
+    focusedId = notebook.pages[id].items[0].id;
+    saveNotebook();
+    setView("active");
+    render(focusedId);
+    toast("Page created");
+  }
+
+  function renamePageById(pageId){
+    const p = notebook.pages[pageId];
+    if (!p) return;
+    const prefill = `${normalizeCategory(p.category)}::${p.name}`;
+    const raw = prompt("Rename (Category::Name or Name):", prefill);
+    if (raw == null) return;
+    const parsed = parseRenameInput(raw, p.category);
+    if (!parsed) return;
+    p.name = parsed.name;
+    p.category = parsed.category;
+    saveNotebook();
+    toast("Renamed");
+  }
+
+  function deletePage(){
+    if (Object.keys(notebook.pages).length <= 1) return;
+    const p = currentPage();
+    const ok = confirm(`Delete page "${p.name}"?\nThis permanently removes all tasks in it.`);
+    if (!ok) return;
+    delete notebook.pages[p.id];
+    notebook.activePageId = Object.keys(notebook.pages)[0];
+    focusedId = null;
+    saveNotebook();
+    setView("active");
+    render(null);
+    toast("Page deleted");
+  }
+
+  // -------- Today page --------
+  function findTodayPageId(){
+    for (const [pid, pg] of Object.entries(notebook.pages)){
+      if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
+    }
+    return null;
+  }
+  function ensureTodayPage(){
+    let pid = findTodayPageId();
+    if (pid && notebook.pages[pid]) return pid;
+    pid = uid();
+    notebook.pages[pid] = {
+      id: pid,
+      name: "Today",
+      category: UNCATEGORIZED,
+      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
+      sortUndo: null
+    };
+    return pid;
+  }
+  function goToTodayPage(){
+    const todayId = ensureTodayPage();
+    switchPage(todayId);
+    setView("active");
+    toast("Today");
+  }
+
+  // Ctrl+Alt+T
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.key.toLowerCase() === "t"){
+      e.preventDefault();
+      goToTodayPage();
+    }
+  });
+
+  // -------- View --------
+  function setView(v){
+    view = v;
+    render(focusedId);
+    toast(v === "active" ? "Active" : "Archive");
+  }
+  function visibleItems(){
+    const items = currentPage().items;
+    return items.filter(it => view === "active" ? !it.archived : it.archived);
+  }
+  function getItemById(id){
+    return currentPage().items.find(x => x.id === id) || null;
+  }
+
+  // -------- Render --------
+  function focusIndex(i){
+    const el = grid.querySelector(`.row[data-index="${i}"] .task`);
+    if (el) el.focus();
+  }
+
+  function render(tryFocusId){
+    const p = currentPage();
+    grid.innerHTML = "";
+
+    // ensure at least one active row exists
+    if (view === "active" && p.items.filter(x => !x.archived).length === 0){
+      p.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+      p.sortUndo = null;
+      saveNotebook();
+    }
+
+    const list = visibleItems();
+    const isTodayPage = (p.name || "").trim().toLowerCase() === "today";
+
+    list.forEach((it, idx) => {
+      const row = document.createElement("div");
+      row.className = "row" + (it.done ? " done" : "") + (it.archived ? " archivedRow" : "");
+      row.dataset.id = it.id;
+      row.dataset.index = String(idx);
+
+      const cellCheck = document.createElement("div");
+      cellCheck.className = "cell check";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!it.done;
+      cb.addEventListener("change", () => { it.done = cb.checked; saveNotebook(); render(it.id); });
+      cellCheck.appendChild(cb);
+
+      const cellText = document.createElement("div");
+      cellText.className = "cell text";
+      cellText.style.setProperty("--indentLevel", clamp(it.indent, 0, MAX_INDENT));
+
+      const input = document.createElement("input");
+      input.className = "task";
+      input.value = it.text || "";
+      input.placeholder = (view === "active" && idx === 0 && !it.text) ? "Type a task..." : "";
+      input.spellcheck = false;
+      input.autocomplete = "off";
+      input.addEventListener("focus", () => focusedId = it.id);
+      input.addEventListener("input", () => { it.text = input.value; saveNotebook(); });
+      input.addEventListener("keydown", (e) => onKey(e, it.id));
+      cellText.appendChild(input);
+
+      const cellAct = document.createElement("div");
+      cellAct.className = "cell act";
+
+      const copyMini = document.createElement("button");
+      copyMini.className = "mini-act";
+      copyMini.textContent = "⧉";
+      copyMini.title = "Copy block";
+      copyMini.disabled = (view !== "active");
+      copyMini.addEventListener("click", () => doCopyById(it.id));
+
+      const pasteMini = document.createElement("button");
+      pasteMini.className = "mini-act";
+      pasteMini.textContent = "⎘";
+      pasteMini.title = "Paste below block";
+      pasteMini.disabled = (view !== "active");
+      pasteMini.addEventListener("click", () => doPasteBelowId(it.id));
+
+      const moveMini = document.createElement("button");
+      moveMini.className = "mini-act";
+      moveMini.textContent = "→";
+      moveMini.title = "Move to Today";
+      moveMini.disabled = !(view === "active" && !isTodayPage);
+      moveMini.addEventListener("click", () => { if (!moveMini.disabled) moveBlockToToday(it.id); });
+
+      cellAct.appendChild(copyMini);
+      cellAct.appendChild(pasteMini);
+      cellAct.appendChild(moveMini);
+
+      row.appendChild(cellCheck);
+      row.appendChild(cellText);
+      row.appendChild(cellAct);
+      grid.appendChild(row);
+    });
+
+    updateSortLabel();
+
+    if (tryFocusId){
+      const el = grid.querySelector(`.row[data-id="${tryFocusId}"] .task`);
+      if (el){
+        el.scrollIntoView({ block: "center", behavior: "auto" });
+        el.focus();
+        const v = el.value;
+        el.setSelectionRange(v.length, v.length);
+      }
+    }
+  }
+
+  function onKey(e, id){
+    const p = currentPage();
+    const it = getItemById(id);
+    if (!it) return;
+
+    const list = visibleItems();
+    const idx = list.findIndex(x => x.id === id);
+    const input = e.target;
+    const canAddRows = (view === "active");
+
+    // Ctrl/Cmd+Enter toggle done
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+      e.preventDefault();
+      it.done = !it.done;
+      saveNotebook();
+      render(it.id);
+      return;
+    }
+
+    if (e.key === "Enter"){
+      if (!canAddRows) return;
+      e.preventDefault();
+      const newItem = { id: uid(), text:"", done:false, indent: it.indent, archived:false, archivedAt:null };
+      const gi = p.items.findIndex(x => x.id === it.id);
+      p.items.splice(gi + 1, 0, newItem);
+      p.sortUndo = null;
+      saveNotebook();
+      render(newItem.id);
+      return;
+    }
+
+    if (e.key === "Tab"){
+      e.preventDefault();
+      it.indent = e.shiftKey ? clamp(it.indent - 1, 0, MAX_INDENT) : clamp(it.indent + 1, 0, MAX_INDENT);
+      p.sortUndo = null;
+      saveNotebook();
+      render(it.id);
+      return;
+    }
+
+    if (e.key === "Backspace"){
+      if (input.value === "" && list.length > 1){
+        e.preventDefault();
+        const gi = p.items.findIndex(x => x.id === it.id);
+        p.items.splice(gi, 1);
+        p.sortUndo = null;
+        saveNotebook();
+        const prevIdx = Math.max(0, idx - 1);
+        const after = visibleItems()[prevIdx];
+        render(after ? after.id : null);
+        return;
+      }
+    }
+
+    if (e.key === "ArrowUp"){
+      const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
+      if (atStart || input.value.length === 0){
+        e.preventDefault();
+        focusIndex(Math.max(0, idx - 1));
+      }
+    }
+    if (e.key === "ArrowDown"){
+      const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+      if (atEnd || input.value.length === 0){
+        e.preventDefault();
+        focusIndex(Math.min(list.length - 1, idx + 1));
+      }
+    }
+  }
+
+  // -------- Add row --------
+  function addRow(){
+    if (view !== "active") setView("active");
+    const p = currentPage();
+
+    let insertIndex = p.items.findIndex(x => x.archived);
+    if (insertIndex < 0) insertIndex = p.items.length;
+
+    const newItem = { id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null };
+    p.items.splice(insertIndex, 0, newItem);
+    p.sortUndo = null;
+    saveNotebook();
+    focusedId = newItem.id;
+    render(focusedId);
+  }
+
+  // -------- Archive actions --------
+  function archiveDone(){
+    const p = currentPage();
+    const toArchive = p.items.filter(x => !x.archived && x.done);
+    if (!toArchive.length){ toast("No done tasks"); return; }
+    const now = Date.now();
+    toArchive.forEach(x => { x.archived = true; x.archivedAt = now; });
+    p.sortUndo = null;
+    saveNotebook();
+    render(focusedId);
+    toast(`Archived ${toArchive.length}`);
+  }
+
+  function restoreFocused(){
+    if (!focusedId){ toast("No focus"); return; }
+    const it = currentPage().items.find(x => x.id === focusedId) || null;
+    if (!it || !it.archived){ toast("Focus archived row"); return; }
+    it.archived = false;
+    it.archivedAt = null;
+    saveNotebook();
+    render(it.id);
+    toast("Restored");
+  }
+
+  function deleteFocused(){
+    if (!focusedId){ toast("No focus"); return; }
+    const p = currentPage();
+    const it = p.items.find(x => x.id === focusedId) || null;
+    if (!it || !it.archived){ toast("Focus archived row"); return; }
+    p.items = p.items.filter(x => x.id !== it.id);
+    p.sortUndo = null;
+    saveNotebook();
+    focusedId = visibleItems()[0]?.id || null;
+    render(focusedId);
+    toast("Deleted");
+  }
+
+  function emptyArchive(){
+    const p = currentPage();
+    const count = p.items.filter(x => x.archived).length;
+    if (!count){ toast("Archive empty"); return; }
+    if (!confirm(`Permanently delete ${count} archived item(s)?`)) return;
+    p.items = p.items.filter(x => !x.archived);
+    p.sortUndo = null;
+    saveNotebook();
+    focusedId = visibleItems()[0]?.id || null;
+    render(focusedId);
+    toast("Archive emptied");
+  }
+
+  // -------- Move block to Today --------
+  function getVisibleBlock(list, startId){
+    const startIdx = list.findIndex(x => x.id === startId);
+    if (startIdx < 0) return { ids: [], nextFocusId: null };
+    const startIndent = Number(list[startIdx].indent || 0);
+    const block = [list[startIdx]];
+    for (let i = startIdx + 1; i < list.length; i++){
+      const ind = Number(list[i].indent || 0);
+      if (ind > startIndent) block.push(list[i]);
+      else break;
+    }
+    const after = list[startIdx + block.length];
+    const before = list[startIdx - 1];
+    return { ids: block.map(x => x.id), nextFocusId: after ? after.id : (before ? before.id : null) };
+  }
+
+  function insertIntoActiveSection(itemsArr, newItems){
+    let idx = itemsArr.findIndex(x => x.archived);
+    if (idx < 0) idx = itemsArr.length;
+    itemsArr.splice(idx, 0, ...newItems);
+  }
+
+  function moveBlockToToday(startId){
+    const source = currentPage();
+    if (String(source.name || "").trim().toLowerCase() === "today"){ toast("Already Today"); return; }
+    if (view !== "active"){ toast("Active only"); return; }
+
+    const { ids, nextFocusId } = getVisibleBlock(visibleItems(), startId);
+    if (!ids.length) return;
+
+    const todayId = ensureTodayPage();
+    const today = notebook.pages[todayId];
+
+    source.sortUndo = null;
+    today.sortUndo = null;
+
+    const setIds = new Set(ids);
+    const moving = [];
+    source.items = source.items.filter(it => {
+      if (setIds.has(it.id)){ moving.push(it); return false; }
+      return true;
+    });
+
+    insertIntoActiveSection(today.items, moving);
+
+    if (source.items.filter(x => !x.archived).length === 0){
+      source.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+    }
+
+    saveNotebook();
+    focusedId = nextFocusId || source.items.find(x => !x.archived)?.id || source.items[0]?.id || null;
+    render(focusedId);
+    toast(`Moved ${moving.length}`);
+  }
+
+  // -------- Copy/Paste block --------
+  async function writeClipboard(text){
+    try{ await navigator.clipboard.writeText(text); return true; }
+    catch(e){
+      try{
+        clipFallback.value = text;
+        clipFallback.focus();
+        clipFallback.select();
+        return document.execCommand("copy");
+      }catch(_){ return false; }
+    }
+  }
+
+  async function readClipboard(){
+    try{ return await navigator.clipboard.readText(); }
+    catch(e){ return prompt("Paste tasks text here:") || ""; }
+  }
+
+  function formatTxtLine(it){
+    const tabs = "\t".repeat(clamp(it.indent, 0, MAX_INDENT));
+    const mark = it.done ? "[x] " : "[ ] ";
+    return tabs + mark + (it.text || "");
+  }
+
+  function getActiveList(){
+    return currentPage().items.filter(it => !it.archived);
+  }
+
+  function getBlockFromActive(startId){
+    const list = getActiveList();
+    const startIdx = list.findIndex(x => x.id === startId);
+    if (startIdx < 0) return [];
+    const startIndent = Number(list[startIdx].indent || 0);
+    const block = [list[startIdx]];
+    for (let i = startIdx + 1; i < list.length; i++){
+      const ind = Number(list[i].indent || 0);
+      if (ind > startIndent) block.push(list[i]);
+      else break;
+    }
+    return block;
+  }
+
+  function blockToText(block){
+    return block.map(formatTxtLine).join("\n") + "\n";
+  }
+
+  function textToItems(text){
+    const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    const out = [];
+    for (let line of lines){
+      if (!line || line.trim() === "") continue;
+
+      let indent = 0;
+      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+      indent = clamp(indent, 0, MAX_INDENT);
+
+      const trimmed = line.trimStart();
+      let done = false;
+      let textPart = trimmed;
+
+      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if (m){
+        done = (m[1].toLowerCase() === "x");
+        textPart = m[2] ?? "";
+      }
+      out.push({ id: uid(), text: String(textPart), done, indent, archived:false, archivedAt:null });
+    }
+    return out;
+  }
+
+  function insertItemsBelowId(anchorId, newItems){
+    if (!newItems.length) return;
+    const p = currentPage();
+
+    let insertIndex = p.items.findIndex(x => x.archived);
+    if (insertIndex < 0) insertIndex = p.items.length;
+
+    const gi = p.items.findIndex(x => x.id === anchorId);
+    if (gi >= 0 && !p.items[gi].archived){
+      const startIndent = Number(p.items[gi].indent || 0);
+      let end = gi + 1;
+      while (end < p.items.length){
+        const next = p.items[end];
+        if (next.archived) break;
+        const ind = Number(next.indent || 0);
+        if (ind > startIndent) end++;
+        else break;
+      }
+      insertIndex = end;
+    }
+
+    p.items.splice(insertIndex, 0, ...newItems);
+    p.sortUndo = null;
+    saveNotebook();
+    focusedId = newItems[0].id;
+    render(focusedId);
+  }
+
+  async function doCopyById(rowId){
+    if (view !== "active"){ toast("Active only"); return; }
+    const block = getBlockFromActive(rowId);
+    if (!block.length){ toast("Nothing"); return; }
+    const ok = await writeClipboard(blockToText(block));
+    toast(ok ? "Copied" : "Copy failed");
+  }
+
+  async function doPasteBelowId(rowId){
+    if (view !== "active"){ toast("Active only"); return; }
+    const text = await readClipboard();
+    const items = textToItems(text);
+    if (!items.length){ toast("Nothing"); return; }
+    insertItemsBelowId(rowId, items);
+    toast("Pasted");
+  }
+
+  // Ctrl/Cmd+Shift+C/V
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const el = document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if (!mod || !e.shiftKey || !inTask) return;
+
+    if (e.key.toLowerCase() === "c"){
+      if (el.selectionStart !== el.selectionEnd) return;
+      e.preventDefault();
+      if (focusedId) doCopyById(focusedId);
+    }
+    if (e.key.toLowerCase() === "v"){
+      e.preventDefault();
+      if (focusedId) doPasteBelowId(focusedId);
+    }
+  });
+
+  // -------- Sort / Unsort --------
+  function normTitle(s){ return String(s || "").trim().toLocaleLowerCase(); }
+  function blockify(list){
+    const blocks = [];
+    let current = null;
+    for (const it of list){
+      const isTop = (Number(it.indent) === 0);
+      if (isTop || !current){
+        current = { key: normTitle(it.text), items: [it] };
+        blocks.push(current);
+      } else {
+        current.items.push(it);
+      }
+    }
+    for (const b of blocks){ if (!b.key) b.key = ""; }
+    return blocks;
+  }
+
+  function updateSortLabel(){
+    const p = currentPage();
+    sortBtn.textContent = (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length) ? "Unsort" : "Sort A→Z";
+  }
+
+  function sortOrUnsort(){
+    const p = currentPage();
+
+    if (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length){
+      const snapshot = p.sortUndo.ids.slice();
+      const byId = new Map(p.items.map(x => [x.id, x]));
+      const restored = [];
+      for (const id of snapshot){
+        const it = byId.get(id);
+        if (it) restored.push(it);
+      }
+      const restoredIds = new Set(restored.map(x => x.id));
+      for (const it of p.items){
+        if (!restoredIds.has(it.id)) restored.push(it);
+      }
+      p.items = restored;
+      p.sortUndo = null;
+      saveNotebook();
+      render(focusedId);
+      toast("Unsorted");
+      return;
+    }
+
+    p.sortUndo = { ids: p.items.map(x => x.id), savedAt: Date.now() };
+
+    const active = p.items.filter(x => !x.archived);
+    const archived = p.items.filter(x => x.archived);
+    const target = (view === "active") ? active : archived;
+
+    const blocks = blockify(target);
+    blocks.sort((a,b) => a.key.localeCompare(b.key));
+    const sortedTarget = blocks.flatMap(b => b.items);
+
+    p.items = (view === "active") ? [...sortedTarget, ...archived] : [...active, ...sortedTarget];
+    saveNotebook();
+    render(focusedId);
+    toast("Sorted");
+  }
+
+  // -------- Export / Import / Backup / Restore --------
+  function downloadBlob(blob, filename){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function safeName(name){
+    return String(name || "page").trim().replace(/[^\w\-]+/g, "_").slice(0, 40) || "page";
+  }
+
+  function exportJson(){
+    const p = currentPage();
+    const blob = new Blob([JSON.stringify(p.items, null, 2)], { type:"application/json" });
+    downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.json`);
+    toast("Exported JSON");
+  }
+
+  async function importJsonFile(f){
+    const p = currentPage();
+    const text = await f.text();
+    const data = JSON.parse(text);
+    p.items = normalizeItems(data);
+    if (!p.items.length){
+      p.items = [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }];
+    }
+    p.sortUndo = null;
+    saveNotebook();
+    focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
+    setView("active");
+    toast("Imported JSON");
+  }
+
+  function toPlainText(){
+    const p = currentPage();
+    const lines = [];
+    const active = p.items.filter(x => !x.archived);
+    const archived = p.items.filter(x => x.archived);
+    for (const it of active) lines.push(formatTxtLine(it));
+    if (archived.length){
+      lines.push(ARCHIVE_MARKER);
+      for (const it of archived) lines.push(formatTxtLine(it));
+    }
+    return lines.join("\n") + "\n";
+  }
+
+  function fromPlainText(text){
+    const rawLines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    let inArchive = false;
+    const out = [];
+    for (let line of rawLines){
+      if (!line || line.trim() === "") continue;
+      if (line.trim() === ARCHIVE_MARKER){ inArchive = true; continue; }
+
+      let indent = 0;
+      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
+      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
+      indent = clamp(indent, 0, MAX_INDENT);
+
+      const trimmed = line.trimStart();
+      let done = false;
+      let textPart = trimmed;
+
+      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
+      if (m){
+        done = (m[1].toLowerCase() === "x");
+        textPart = m[2] ?? "";
+      }
+      out.push({ id: uid(), text: String(textPart), done, indent, archived: inArchive, archivedAt: inArchive ? Date.now() : null });
+    }
+    if (out.filter(x => !x.archived).length === 0){
+      out.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
+    }
+    return out;
+  }
+
+  function exportTxt(){
+    const p = currentPage();
+    const blob = new Blob([toPlainText()], { type:"text/plain;charset=utf-8" });
+    downloadBlob(blob, `${safeName(p.name)}-${new Date().toISOString().slice(0,10)}.txt`);
+    toast("Exported TXT");
+  }
+
+  async function importTxtFile(f){
+    const p = currentPage();
+    const text = await f.text();
+    p.items = fromPlainText(text);
+    p.sortUndo = null;
+    saveNotebook();
+    focusedId = p.items.find(x => !x.archived)?.id || p.items[0]?.id || null;
+    setView("active");
+    toast("Imported TXT");
+  }
+
+  function backupAll(){
+    const payload = { format:"tiny-todo-backup", exportedAt: new Date().toISOString(), notebook };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+    downloadBlob(blob, `tiny-todo-backup-${new Date().toISOString().slice(0,10)}.json`);
+    toast("Backup exported");
+  }
+
+  async function restoreAllFromFile(f){
+    const text = await f.text();
+    const data = JSON.parse(text);
+    const nbCandidate = (data && data.notebook) ? data.notebook : data;
+    const nb = ensureNotebookShape(nbCandidate);
+    if (!nb) throw new Error("Invalid backup file");
+    const ok = confirm("Restore ALL will replace your current pages and tasks. Continue?");
+    if (!ok) return;
+    notebook = nb;
+    view = "active";
+    focusedId = null;
+    saveNotebook();
+    rebuildRail();
+    setView("active");
+    render(null);
+    toast("Restored ALL");
+  }
+
+  // -------- Rail rendering --------
   function catStorageKey(cat){ return RAIL_KEY_PREFIX + encodeURIComponent(cat); }
   function isCatClosed(cat){ return localStorage.getItem(catStorageKey(cat)) === "1"; }
   function setCatClosed(cat, closed){
@@ -830,44 +1573,31 @@
     else localStorage.removeItem(k);
   }
 
-  function getSortedPages(){
-    return Object.values(notebook.pages).slice().sort((a,b) => a.name.localeCompare(b.name));
-  }
-
-  function parseRenameInput(raw, currentCategory){
-    const s = String(raw || "").trim();
-    if (!s) return null;
-    const idx = s.indexOf("::");
-    if (idx >= 0){
-      const catPart = s.slice(0, idx).trim();
-      const namePart = s.slice(idx + 2).trim();
-      if (!namePart) return null;
-      return { category: normalizeCategory(catPart), name: namePart };
-    }
-    return { category: normalizeCategory(currentCategory), name: s };
-  }
-
   function rebuildRail(){
     const tokens = tokenize(railQuery);
     const searching = tokens.length > 0;
+
     railTitle.textContent = searching ? "Results" : "Pages";
     pagesRail.innerHTML = "";
 
-    const pagesAll = getSortedPages();
+    const pagesAll = Object.values(notebook.pages).slice().sort((a,b)=>a.name.localeCompare(b.name));
     const matchedPages = pagesAll.filter(p => pageMatchesTokens(p, tokens));
 
     if (searching){
       const catMap = new Map();
+
       for (const p of matchedPages){
         const hits = [];
         for (const it of (p.items || [])){
           const txt = (it && it.text) ? String(it.text) : "";
           if (!txt.trim()) continue;
           if (itemMatchesTokens(txt, tokens)){
-            hits.push({ itemId: it.id, text: txt, archived: !!it.archived, done: !!it.done, indent: Number(it.indent || 0) });
+            hits.push({ itemId: it.id, text: txt, archived: !!it.archived, indent: Number(it.indent||0) });
           }
         }
-        if (hits.length === 0) continue;
+        if (hits.length === 0){
+          hits.push({ itemId: null, text: "[match in page name/category]", archived: false, indent: 0 });
+        }
         const cat = normalizeCategory(p.category);
         if (!catMap.has(cat)) catMap.set(cat, []);
         catMap.get(cat).push({ page: p, hits });
@@ -876,7 +1606,7 @@
       if (catMap.size === 0){
         const div = document.createElement("div");
         div.className = "rail-empty";
-        div.textContent = "No task matches";
+        div.textContent = "No matches";
         pagesRail.appendChild(div);
         return;
       }
@@ -936,17 +1666,23 @@
             txt.textContent = hit.text;
             b.appendChild(txt);
 
-            b.addEventListener("click", () => goToItem(entry.page.id, hit.itemId, hit.archived));
+            b.addEventListener("click", () => {
+              if (hit.itemId) goToItem(entry.page.id, hit.itemId, hit.archived);
+              else switchPage(entry.page.id);
+            });
+
             sec.appendChild(b);
           }
+
           wrap.appendChild(sec);
         }
+
         pagesRail.appendChild(wrap);
       }
       return;
     }
 
-    // Normal pages rail
+    // Pages mode grouped by category
     const groups = new Map();
     for (const p of pagesAll){
       const cat = normalizeCategory(p.category);
@@ -1003,47 +1739,6 @@
     }
   }
 
-  function switchPage(pageId){
-    if (!notebook.pages[pageId]) return;
-    notebook.activePageId = pageId;
-    focusedId = null;
-    saveNotebook();
-    render(null);
-  }
-
-  function newPage(){
-    const name = prompt("Page name:", "New Page");
-    if (!name) return;
-    const id = uid();
-    notebook.pages[id] = {
-      id,
-      name: String(name).trim(),
-      category: UNCATEGORIZED,
-      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
-      sortUndo: null
-    };
-    notebook.activePageId = id;
-    focusedId = notebook.pages[id].items[0].id;
-    saveNotebook();
-    setView("active");
-    render(focusedId);
-    toast("Page created");
-  }
-
-  function renamePageById(pageId){
-    const p = notebook.pages[pageId];
-    if (!p) return;
-    const prefill = `${normalizeCategory(p.category)}::${p.name}`;
-    const raw = prompt("Rename (Category::Name or Name):", prefill);
-    if (raw == null) return;
-    const parsed = parseRenameInput(raw, p.category);
-    if (!parsed) return;
-    p.name = parsed.name;
-    p.category = parsed.category;
-    saveNotebook();
-    toast("Renamed");
-  }
-
   function goToItem(pageId, itemId, archived){
     if (!notebook.pages[pageId]) return;
     notebook.activePageId = pageId;
@@ -1053,347 +1748,27 @@
     render(itemId);
   }
 
-  function setView(v){
-    view = v;
-    render(focusedId);
-  }
-
-  function visibleItems(){
-    const items = currentPage().items;
-    return items.filter(it => view === "active" ? !it.archived : it.archived);
-  }
-
-  function getItemById(id){
-    return currentPage().items.find(x => x.id === id) || null;
-  }
-
-  function render(tryFocusId){
-    const p = currentPage();
-    const list = visibleItems();
-    grid.innerHTML = "";
-
-    const isTodayPage = (p.name || "").trim().toLowerCase() === "today";
-
-    list.forEach((it, idx) => {
-      const row = document.createElement("div");
-      row.className = "row" + (it.done ? " done" : "") + (it.archived ? " archivedRow" : "");
-      row.dataset.id = it.id;
-      row.dataset.index = String(idx);
-
-      const cellCheck = document.createElement("div");
-      cellCheck.className = "cell check";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = !!it.done;
-      cb.addEventListener("change", () => { it.done = cb.checked; saveNotebook(); render(it.id); });
-      cellCheck.appendChild(cb);
-
-      const cellText = document.createElement("div");
-      cellText.className = "cell text";
-      cellText.style.setProperty("--indentLevel", clamp(it.indent, 0, MAX_INDENT));
-
-      const input = document.createElement("input");
-      input.className = "task";
-      input.value = it.text || "";
-      input.spellcheck = false;
-      input.autocomplete = "off";
-      input.addEventListener("focus", () => focusedId = it.id);
-      input.addEventListener("input", () => { it.text = input.value; saveNotebook(); });
-      input.addEventListener("keydown", (e) => onKey(e, it.id));
-      cellText.appendChild(input);
-
-      const cellAct = document.createElement("div");
-      cellAct.className = "cell act";
-
-      const copyMini = document.createElement("button");
-      copyMini.className = "mini-act";
-      copyMini.textContent = "⧉";
-      copyMini.disabled = (view !== "active");
-      copyMini.addEventListener("click", () => doCopyById(it.id));
-
-      const pasteMini = document.createElement("button");
-      pasteMini.className = "mini-act";
-      pasteMini.textContent = "⎘";
-      pasteMini.disabled = (view !== "active");
-      pasteMini.addEventListener("click", () => doPasteBelowId(it.id));
-
-      const moveMini = document.createElement("button");
-      moveMini.className = "mini-act";
-      moveMini.textContent = "→";
-      moveMini.disabled = !(view === "active" && !isTodayPage);
-      moveMini.addEventListener("click", () => { if (!moveMini.disabled) moveBlockToToday(it.id); });
-
-      cellAct.appendChild(copyMini);
-      cellAct.appendChild(pasteMini);
-      cellAct.appendChild(moveMini);
-
-      row.appendChild(cellCheck);
-      row.appendChild(cellText);
-      row.appendChild(cellAct);
-      grid.appendChild(row);
-    });
-
-    updateSortLabel();
-
-    if (tryFocusId){
-      const el = grid.querySelector(`.row[data-id="${tryFocusId}"] .task`);
-      if (el){
-        el.scrollIntoView({ block: "center", behavior: "auto" });
-        el.focus();
-        const v = el.value;
-        el.setSelectionRange(v.length, v.length);
+  // -------- Search wiring --------
+  function computeSearchResults(tokens){
+    const pagesMatched = Object.values(notebook.pages).filter(p => pageMatchesTokens(p, tokens));
+    const taskHits = [];
+    for (const p of pagesMatched){
+      for (const it of (p.items || [])){
+        const txt = it && it.text ? String(it.text) : "";
+        if (!txt.trim()) continue;
+        if (itemMatchesTokens(txt, tokens)){
+          taskHits.push({ pageId: p.id, itemId: it.id, archived: !!it.archived });
+        }
       }
     }
+    return { pagesMatched, taskHits };
   }
 
-  function onKey(e, id){
-    const p = currentPage();
-    const it = getItemById(id);
-    if (!it) return;
-
-    const list = visibleItems();
-    const idx = list.findIndex(x => x.id === id);
-    const input = e.target;
-
-    if (e.key === "Enter"){
-      if (view !== "active") return;
-      e.preventDefault();
-      const newItem = { id: uid(), text:"", done:false, indent: it.indent, archived:false, archivedAt:null };
-      const gi = p.items.findIndex(x => x.id === it.id);
-      p.items.splice(gi + 1, 0, newItem);
-      p.sortUndo = null;
-      saveNotebook();
-      render(newItem.id);
-      return;
-    }
-
-    if (e.key === "Tab"){
-      e.preventDefault();
-      it.indent = e.shiftKey ? clamp(it.indent - 1, 0, MAX_INDENT) : clamp(it.indent + 1, 0, MAX_INDENT);
-      p.sortUndo = null;
-      saveNotebook();
-      render(it.id);
-      return;
-    }
-
-    if (e.key === "Backspace"){
-      if (input.value === "" && list.length > 1){
-        e.preventDefault();
-        const gi = p.items.findIndex(x => x.id === it.id);
-        p.items.splice(gi, 1);
-        p.sortUndo = null;
-        saveNotebook();
-        const prevIdx = Math.max(0, idx - 1);
-        const after = visibleItems()[prevIdx];
-        render(after ? after.id : null);
-        return;
-      }
-    }
-  }
-
-  function addRow(){
-    if (view !== "active") setView("active");
-    const p = currentPage();
-    const newItem = { id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null };
-    p.items.push(newItem);
-    p.sortUndo = null;
-    saveNotebook();
-    focusedId = newItem.id;
-    render(focusedId);
-  }
-
-  function updateSortLabel(){
-    const p = currentPage();
-    sortBtn.textContent = (p.sortUndo && Array.isArray(p.sortUndo.ids) && p.sortUndo.ids.length) ? "Unsort" : "Sort A→Z";
-  }
-
-  // --- Today handling ---
-  function findTodayPageId(){
-    for (const [pid, pg] of Object.entries(notebook.pages)){
-      if (String(pg.name || "").trim().toLowerCase() === "today") return pid;
-    }
-    return null;
-  }
-  function ensureTodayPage(){
-    let pid = findTodayPageId();
-    if (pid && notebook.pages[pid]) return pid;
-    pid = uid();
-    notebook.pages[pid] = {
-      id: pid,
-      name: "Today",
-      category: UNCATEGORIZED,
-      items: [{ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null }],
-      sortUndo: null
-    };
-    return pid;
-  }
-  function goToTodayPage(){
-    const todayId = ensureTodayPage();
-    switchPage(todayId);
-    setView("active");
-    toast("Today");
-  }
-
-  // Move block to Today and copy/paste kept as in your baseline
-  function getVisibleBlock(list, startId){
-    const startIdx = list.findIndex(x => x.id === startId);
-    if (startIdx < 0) return { ids: [], nextFocusId: null };
-    const startIndent = Number(list[startIdx].indent || 0);
-    const block = [list[startIdx]];
-    for (let i = startIdx + 1; i < list.length; i++){
-      const ind = Number(list[i].indent || 0);
-      if (ind > startIndent) block.push(list[i]);
-      else break;
-    }
-    const after = list[startIdx + block.length];
-    const before = list[startIdx - 1];
-    return { ids: block.map(x => x.id), nextFocusId: after ? after.id : (before ? before.id : null) };
-  }
-  function insertIntoActiveSection(itemsArr, newItems){
-    let idx = itemsArr.findIndex(x => x.archived);
-    if (idx < 0) idx = itemsArr.length;
-    itemsArr.splice(idx, 0, ...newItems);
-  }
-  function moveBlockToToday(startId){
-    const source = currentPage();
-    if (String(source.name || "").trim().toLowerCase() === "today"){ toast("Already Today"); return; }
-    if (view !== "active"){ toast("Active only"); return; }
-
-    const { ids, nextFocusId } = getVisibleBlock(visibleItems(), startId);
-    if (!ids.length) return;
-
-    const todayId = ensureTodayPage();
-    const today = notebook.pages[todayId];
-
-    const setIds = new Set(ids);
-    const moving = [];
-    source.items = source.items.filter(it => {
-      if (setIds.has(it.id)){ moving.push(it); return false; }
-      return true;
-    });
-
-    insertIntoActiveSection(today.items, moving);
-
-    if (source.items.filter(x => !x.archived).length === 0){
-      source.items.unshift({ id: uid(), text:"", done:false, indent:0, archived:false, archivedAt:null });
-    }
-
-    saveNotebook();
-    focusedId = nextFocusId || source.items.find(x => !x.archived)?.id || source.items[0]?.id || null;
-    render(focusedId);
-    toast(`Moved ${moving.length}`);
-  }
-
-  async function writeClipboard(text){
-    try{ await navigator.clipboard.writeText(text); return true; }
-    catch(e){
-      try{
-        clipFallback.value = text;
-        clipFallback.focus();
-        clipFallback.select();
-        return document.execCommand("copy");
-      }catch(_){ return false; }
-    }
-  }
-  async function readClipboard(){
-    try{ return await navigator.clipboard.readText(); }
-    catch(e){ return prompt("Paste tasks text here:") || ""; }
-  }
-  function formatTxtLine(it){
-    const tabs = "\t".repeat(clamp(it.indent, 0, MAX_INDENT));
-    const mark = it.done ? "[x] " : "[ ] ";
-    return tabs + mark + (it.text || "");
-  }
-  function getActiveList(){
-    return currentPage().items.filter(it => !it.archived);
-  }
-  function getBlockFromActive(startId){
-    const list = getActiveList();
-    const startIdx = list.findIndex(x => x.id === startId);
-    if (startIdx < 0) return [];
-    const startIndent = Number(list[startIdx].indent || 0);
-    const block = [list[startIdx]];
-    for (let i = startIdx + 1; i < list.length; i++){
-      const ind = Number(list[i].indent || 0);
-      if (ind > startIndent) block.push(list[i]);
-      else break;
-    }
-    return block;
-  }
-  function blockToText(block){
-    return block.map(formatTxtLine).join("\n") + "\n";
-  }
-  function textToItems(text){
-    const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    const out = [];
-    for (let line of lines){
-      if (!line || line.trim() === "") continue;
-
-      let indent = 0;
-      while (line.startsWith("\t")){ indent++; line = line.slice(1); }
-      while (line.startsWith("  ")){ indent++; line = line.slice(2); }
-      indent = clamp(indent, 0, MAX_INDENT);
-
-      const trimmed = line.trimStart();
-      let done = false;
-      let textPart = trimmed;
-
-      const m = trimmed.match(/^\[(x|X| )\]\s*(.*)$/);
-      if (m){
-        done = (m[1].toLowerCase() === "x");
-        textPart = m[2] ?? "";
-      }
-      out.push({ id: uid(), text: String(textPart), done, indent, archived:false, archivedAt:null });
-    }
-    return out;
-  }
-  function insertItemsBelowId(anchorId, newItems){
-    if (!newItems.length) return;
-    const p = currentPage();
-    let insertIndex = p.items.findIndex(x => x.archived);
-    if (insertIndex < 0) insertIndex = p.items.length;
-
-    const gi = p.items.findIndex(x => x.id === anchorId);
-    if (gi >= 0 && !p.items[gi].archived){
-      const startIndent = Number(p.items[gi].indent || 0);
-      let end = gi + 1;
-      while (end < p.items.length){
-        const next = p.items[end];
-        if (next.archived) break;
-        const ind = Number(next.indent || 0);
-        if (ind > startIndent) end++;
-        else break;
-      }
-      insertIndex = end;
-    }
-    p.items.splice(insertIndex, 0, ...newItems);
-    p.sortUndo = null;
-    saveNotebook();
-    focusedId = newItems[0].id;
-    render(focusedId);
-  }
-
-  async function doCopyById(rowId){
-    if (view !== "active"){ toast("Active only"); return; }
-    const block = getBlockFromActive(rowId);
-    if (!block.length){ toast("Nothing"); return; }
-    const ok = await writeClipboard(blockToText(block));
-    toast(ok ? "Copied" : "Copy failed");
-  }
-  async function doPasteBelowId(rowId){
-    if (view !== "active"){ toast("Active only"); return; }
-    const text = await readClipboard();
-    const items = textToItems(text);
-    if (!items.length){ toast("Nothing"); return; }
-    insertItemsBelowId(rowId, items);
-    toast("Pasted");
-  }
-
-  // Search box wiring
   pageSearch.addEventListener("input", () => {
     railQuery = pageSearch.value || "";
     rebuildRail();
   });
+
   pageSearch.addEventListener("keydown", (e) => {
     if (e.key === "Escape"){
       e.preventDefault();
@@ -1402,19 +1777,74 @@
       rebuildRail();
       pageSearch.blur();
     }
+    if (e.key === "Enter"){
+      const tokens = tokenize(pageSearch.value || "");
+      if (!tokens.length) return;
+      const { pagesMatched, taskHits } = computeSearchResults(tokens);
+      if (taskHits.length === 1){
+        e.preventDefault();
+        goToItem(taskHits[0].pageId, taskHits[0].itemId, taskHits[0].archived);
+      } else if (pagesMatched.length === 1){
+        e.preventDefault();
+        switchPage(pagesMatched[0].id);
+      }
+    }
   });
 
-  // Wire events
+  // -------- Wire buttons --------
   toggleUi.addEventListener("click", toggleUiMode);
   newPageBtn.addEventListener("click", newPage);
   todayBtn.addEventListener("click", goToTodayPage);
-  addRowBtn.addEventListener("click", addRow);
 
-  // Init
+  addRowBtn.addEventListener("click", addRow);
+  sortBtn.addEventListener("click", sortOrUnsort);
+
+  exportJsonBtn.addEventListener("click", exportJson);
+  importJsonBtn.addEventListener("click", () => fileJson.click());
+  fileJson.addEventListener("change", async () => {
+    const f = fileJson.files[0];
+    if (!f) return;
+    try{ await importJsonFile(f); }
+    catch(e){ alert("Import JSON failed: " + e.message); }
+    finally{ fileJson.value = ""; }
+  });
+
+  exportTxtBtn.addEventListener("click", exportTxt);
+  importTxtBtn.addEventListener("click", () => fileTxt.click());
+  fileTxt.addEventListener("change", async () => {
+    const f = fileTxt.files[0];
+    if (!f) return;
+    try{ await importTxtFile(f); }
+    catch(e){ alert("Import TXT failed: " + e.message); }
+    finally{ fileTxt.value = ""; }
+  });
+
+  backupAllBtn.addEventListener("click", backupAll);
+  restoreAllBtn.addEventListener("click", () => fileAll.click());
+  fileAll.addEventListener("change", async () => {
+    const f = fileAll.files[0];
+    if (!f) return;
+    try{ await restoreAllFromFile(f); }
+    catch(e){ alert("Restore ALL failed: " + e.message); }
+    finally{ fileAll.value = ""; }
+  });
+
+  archiveDoneBtn.addEventListener("click", archiveDone);
+  restoreFocusedBtn.addEventListener("click", restoreFocused);
+  deleteFocusedBtn.addEventListener("click", deleteFocused);
+  emptyArchiveBtn.addEventListener("click", emptyArchive);
+
+  viewActiveBtn.addEventListener("click", () => setView("active"));
+  viewArchiveBtn.addEventListener("click", () => setView("archive"));
+  deletePageBtn.addEventListener("click", deletePage);
+
+  // -------- Init --------
   rebuildRail();
   focusedId = currentPage().items.find(x => !x.archived)?.id || currentPage().items[0]?.id || null;
   setView("active");
   updateSortLabel();
+  toast("");
+
 })();
 </script>
 </body>
