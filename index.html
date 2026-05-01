@@ -266,69 +266,53 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
 /* =========================================================
    MOBILE RESPONSIVE (UI ONLY)
    ========================================================= */
+/* =========================================================
+   MOBILE RESPONSIVE (UI ONLY)
+   ========================================================= */
 @media (max-width: 768px){
   /* Hide left menu button on mobile */
-  #mobLeftBtn{
-    display: none !important;
-  }
-}
+  #mobLeftBtn{ display:none !important; }
 
-@media (max-width: 768px){
-  #toggleUi{
-    margin-left: 0;
-    margin-right: 0;
-  }
-}
-
-@media (max-width: 768px){
   /* mobile-only header buttons */
-  .mob-btn{display:inline-flex}
-  
-  @media (max-width: 768px){
+  .mob-btn{ display:inline-flex; }
 
   /* --- MOBILE HEADER: 2-row layout that always fits --- */
   .header-inner{
-    max-width: 100%;
-    padding: 6px 10px;
-    justify-content: flex-start;   /* stop forced center packing */
-    flex-wrap: wrap;               /* allow 2 rows */
-    gap: 6px 8px;                  /* row gap / column gap */
-    white-space: normal;           /* allow wrapping (previously nowrap) */
+    max-width:100%;
+    padding:6px 10px;
+    justify-content:flex-start;
+    flex-wrap:wrap;
+    gap:6px 8px;
+    white-space:normal;
   }
 
-  /* Row 1: left icon + title + right icon */
-  #mobLeftBtn{ order: 1; }
+  /* Row 1 */
   #toggleUi{
-    order: 2;
-    flex: 1 1 auto;                /* title takes remaining space */
-    text-align: center;
+    order:2;
+    flex:1 1 auto;
+    text-align:center;
+    font-size:14px;
+    margin-left:0;
+    margin-right:0;
   }
-  #mobRightBtn{ order: 3; }
+  #mobRightBtn{ order:3; }
 
   /* Row 2: Search full width */
   #pageSearch{
-    order: 10;
-    flex: 1 1 100%;
-    max-width: 100%;
-    width: 100%;
+    order:10;
+    flex:1 1 100%;
+    max-width:100%;
+    width:100%;
   }
 
-  /* Row 2: Action buttons (wrap nicely) */
-  #newPage, #todayBtn, #importantFilterBtn{
-    order: 11;
-    flex: 0 0 auto;
-    font-size: 13px;
-    padding: 2px 6px;              /* small padding so tap targets remain OK */
+  /* Row 2 buttons */
+  #newPage,#todayBtn,#importantFilterBtn{
+    order:11;
+    flex:0 0 auto;
+    font-size:13px;
+    padding:2px 6px;
+    white-space:nowrap;
   }
-
-  /* Optional: keep button text from stretching weirdly */
-  #newPage, #todayBtn{ white-space: nowrap; }
-  #importantFilterBtn{ white-space: nowrap; }
-
-  /* If you still see tight spacing, slightly reduce title size on mobile */
-  #toggleUi{ font-size: 14px; }
-
-}
 
   /* Make app feel native: bigger typography + row height */
   :root{
@@ -337,17 +321,14 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
     --pad-x:6px;
     --act-col:74px;
     --check-col:58px;
-    --search-w: 160px;
+    --search-w:160px;
   }
-  .task{font-size:16px} /* avoid iOS zoom */
+  .task{ font-size:16px; } /* avoid iOS zoom */
 
-  /* Make wrap full width with space for drawers */
-  .wrap{
-    max-width:100%;
-    padding:10px 10px 18px;
-  }
+  /* wrap full width */
+  .wrap{ max-width:100%; padding:10px 10px 18px; }
 
-/* Drawer panel is now the right column (Pages + Menu) */
+  /* Drawer panel is now the right column (Pages + Menu) */
   .right-col{
     position:fixed;
     top:56px;
@@ -356,20 +337,17 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
     width:min(86vw, 320px);
     max-height:unset;
     overflow:auto;
-    -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling:touch;
     background:var(--drawer-bg);
     border:1px solid var(--drawer-border);
     border-radius:18px;
     box-shadow:var(--drawer-shadow);
     z-index:50;
-
     transform:translateX(calc(100% + 14px));
     transition:transform 160ms ease;
-
     padding:10px;
   }
 
-  /* Inner sections are normal flow inside the drawer */
   .right-col .pages-rail,
   .right-col .sidebar{
     position:static;
@@ -382,17 +360,14 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
   }
 
   body.right-open .right-col{ transform:translateX(0); }
-
-
- body.right-open #backdrop{ display:block; }
+  body.right-open #backdrop{ display:block; }
 
   body.right-open{
     overflow:hidden;
     touch-action:none;
   }
 
-  /* keep main content full width */
-  .main{max-width:100%}
+  .main{ max-width:100%; }
 }
 
 /* Existing compact mode kept (desktop), mobile drawers override anyway */
