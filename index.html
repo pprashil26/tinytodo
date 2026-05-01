@@ -269,6 +269,52 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
 @media (max-width: 768px){
   /* mobile-only header buttons */
   .mob-btn{display:inline-flex}
+  
+  @media (max-width: 768px){
+
+  /* --- MOBILE HEADER: 2-row layout that always fits --- */
+  .header-inner{
+    max-width: 100%;
+    padding: 6px 10px;
+    justify-content: flex-start;   /* stop forced center packing */
+    flex-wrap: wrap;               /* allow 2 rows */
+    gap: 6px 8px;                  /* row gap / column gap */
+    white-space: normal;           /* allow wrapping (previously nowrap) */
+  }
+
+  /* Row 1: left icon + title + right icon */
+  #mobLeftBtn{ order: 1; }
+  #toggleUi{
+    order: 2;
+    flex: 1 1 auto;                /* title takes remaining space */
+    text-align: center;
+  }
+  #mobRightBtn{ order: 3; }
+
+  /* Row 2: Search full width */
+  #pageSearch{
+    order: 10;
+    flex: 1 1 100%;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Row 2: Action buttons (wrap nicely) */
+  #newPage, #todayBtn, #importantFilterBtn{
+    order: 11;
+    flex: 0 0 auto;
+    font-size: 13px;
+    padding: 2px 6px;              /* small padding so tap targets remain OK */
+  }
+
+  /* Optional: keep button text from stretching weirdly */
+  #newPage, #todayBtn{ white-space: nowrap; }
+  #importantFilterBtn{ white-space: nowrap; }
+
+  /* If you still see tight spacing, slightly reduce title size on mobile */
+  #toggleUi{ font-size: 14px; }
+
+}
 
   /* Make app feel native: bigger typography + row height */
   :root{
