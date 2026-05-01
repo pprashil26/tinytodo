@@ -120,6 +120,21 @@ header{
   justify-content:center;
 }
 
+/* =========================================================
+   PAGE SIZE + RIGHT PANEL TOGGLES (UI ONLY)
+   ========================================================= */
+
+/* Page size states (default stays A5 because your :root has --page-w:148mm) */
+body.size-a4{ --page-w:210mm; }  /* A4 portrait width */
+body.size-a5{ --page-w:148mm; }  /* A5 portrait width */
+
+/* Collapse the right panel (desktop) */
+body.right-collapsed .right-col{ display:none; }
+
+/* When right panel collapsed, reclaim the width */
+body.right-collapsed .wrap{
+  max-width:calc(var(--page-w) + (var(--gap)*2));
+}
 
 /* NEW: Right column stacks Pages + Menu */
 .right-col{
@@ -392,7 +407,8 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     <button type="button" id="newPage">+ Page</button>
     <button type="button" id="todayBtn" title="Go to Today">Today</button>
     <button type="button" id="importantFilterBtn" class="filter-important" title="Show only important (‼️) tasks">‼️ Only</button>
-
+<button type="button" id="pageSizeBtn" title="Toggle page size A5/A4">A4</button>
+<button type="button" id="toggleRightPanelBtn" title="Hide/show right panel">Hide Panel</button>
     <button type="button" class="mob-btn" id="mobRightBtn" aria-label="Open pages" title="Pages">📄</button>
   </div>
 </header>
@@ -475,6 +491,9 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const FILTER_KEY="tiny_todo_filter_important_only";
   const MAX_INDENT=Number(getComputedStyle(document.documentElement).getPropertyValue("--max-indent"))||6;
 
+  const SIZE_KEY="tiny_todo_page_size";         // "a5" or "a4"
+  const RIGHT_COLLAPSE_KEY="tiny_todo_right_collapsed"; // "1" or "0"
+
   const body=document.body;
   const toggleUi=document.getElementById("toggleUi");
   const backdrop=document.getElementById("backdrop");
@@ -489,6 +508,9 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const newPageBtn=document.getElementById("newPage");
   const todayBtn=document.getElementById("todayBtn");
   const importantFilterBtn=document.getElementById("importantFilterBtn");
+  
+  const pageSizeBtn=document.getElementById("pageSizeBtn");
+  const toggleRightPanelBtn=document.getElementById("toggleRightPanelBtn");
 
   const mobLeftBtn=document.getElementById("mobLeftBtn");
   const mobRightBtn=document.getElementById("mobRightBtn");
@@ -546,6 +568,83 @@ function toggleLeftDrawer(){
   // Close drawers on resize to desktop
   window.addEventListener("resize", ()=>{
     if(window.matchMedia("(min-width: 769px)").matches) closeDrawers();
+  });
+
+/* =========================================================
+     UI ONLY: Page size + right panel collapse (desktop)
+     ========================================================= */
+  let pageSize=(localStorage.getItem(SIZE_KEY) || "a5"); // default a5
+  let rightCollapsed=(localStorage.getItem(RIGHT_COLLAPSE_KEY)==="1");
+
+  function applyPageSize(){
+    body.classList.toggle("size-a4", pageSize==="a4");
+    body.classList.toggle("size-a5", pageSize!=="a4");
+    // Button label shows what you'll switch TO
+    if(pageSizeBtn) pageSizeBtn.textContent = (pageSize==="a4") ? "A5" : "A4";
+  }
+
+  function applyRightPanel(){
+    body.classList.toggle("right-collapsed", rightCollapsed);
+    if(toggleRightPanelBtn) toggleRightPanelBtn.textContent = rightCollapsed ? "Show Panel" : "Hide Panel";
+  }
+
+  if(pageSizeBtn){
+    pageSizeBtn.addEventListener("click", () => {
+      pageSize = (pageSize==="a4") ? "a5" : "a4";
+      localStorage.setItem(SIZE_KEY, pageSize);
+      applyPageSize();
+    });
+  }
+
+  if(toggleRightPanelBtn){
+    toggleRightPanelBtn.addEventListener("click", () => {
+      rightCollapsed = !rightCollapsed;
+      localStorage.setItem(RIGHT_COLLAPSE_KEY, rightCollapsed ? "1" : "0");
+      applyRightPanel();
+    });
+  }
+
+  // Apply saved UI state on load
+  applyPageSize();
+  applyRightPanel();
+``
+
+/* =========================================================
+     Shortcuts: Ctrl+Alt+4 (A4/A5), Ctrl+Alt+P (panel)
+     UI ONLY
+     ========================================================= */
+  document.addEventListener("keydown",(e)=>{
+    // Must be Ctrl+Alt (not Meta), avoid overriding other shortcuts
+    if(!(e.ctrlKey && e.altKey) || e.metaKey) return;
+
+    // Don't fire while typing in task fields (prevents accidental toggles)
+    const el=document.activeElement;
+    const inTask = el && el.classList && el.classList.contains("task");
+    if(inTask) return;
+
+    const k = (e.key || "").toLowerCase();
+
+    // Ctrl+Alt+4 => toggle A4/A5
+    if(k === "4"){
+      e.preventDefault();
+      if(typeof pageSize !== "undefined"){
+        pageSize = (pageSize==="a4") ? "a5" : "a4";
+        localStorage.setItem(SIZE_KEY, pageSize);
+        applyPageSize();
+      }
+      return;
+    }
+
+    // Ctrl+Alt+P => toggle right panel collapse/show
+    if(k === "p"){
+      e.preventDefault();
+      if(typeof rightCollapsed !== "undefined"){
+        rightCollapsed = !rightCollapsed;
+        localStorage.setItem(RIGHT_COLLAPSE_KEY, rightCollapsed ? "1" : "0");
+        applyRightPanel();
+      }
+      return;
+    }
   });
 
   /* =========================================================
