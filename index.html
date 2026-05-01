@@ -267,6 +267,20 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
    MOBILE RESPONSIVE (UI ONLY)
    ========================================================= */
 @media (max-width: 768px){
+  /* Hide left menu button on mobile */
+  #mobLeftBtn{
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px){
+  #toggleUi{
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 768px){
   /* mobile-only header buttons */
   .mob-btn{display:inline-flex}
   
