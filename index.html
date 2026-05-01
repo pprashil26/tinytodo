@@ -184,6 +184,47 @@ summary.group-sum::after{content:"›";transform:rotate(90deg);opacity:.65}
 details[open] summary.group-sum::after{transform:rotate(-90deg)}
 .group-body{margin-top:8px;display:flex;flex-direction:column;gap:8px}
 
+/* Small pill button (matches your minimalist style) */
+.tiny-pill{
+  font-size:12px;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.14);
+  color:rgba(0,0,0,.50);
+  background:rgba(255,255,255,.55);
+  line-height:1.2;
+}
+.tiny-pill.active{
+  border-color:rgba(0,0,0,.28);
+  background:rgba(0,0,0,.06);
+  color:rgba(0,0,0,.78);
+}
+
+/* =========================================================
+   NO-CHECKS MODE (per page): looks like ruled notepad
+   ========================================================= */
+body.no-checks .row,
+body.no-checks .expandRow{
+  grid-template-columns: 0 1fr var(--act-col);
+}
+
+/* Completely hide check cell */
+body.no-checks .cell.check{
+  display:none;
+}
+
+/* Remove left divider (since check column is gone) */
+body.no-checks .cell.act{
+  border-left:1px solid rgba(40,60,90,.06);
+}
+
+/* Grid background without the vertical checkbox divider */
+body.no-checks .grid{
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0) 24px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--row-h) - 1px), var(--paper-line) calc(var(--row-h) - 1px), var(--paper-line) var(--row-h));
+}
+
 /* Paper/Grid */
 .paper{border:1px solid rgba(0,0,0,.10);border-radius:14px;overflow:hidden;background:var(--paper);box-shadow:0 10px 24px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.06)}
 .grid{
@@ -422,10 +463,11 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       <div class="grid" id="grid" aria-label="todo grid"></div>
     </div>
 
-    <div class="bottom-actions">
-      <button type="button" id="addRowBtn">+ Row</button>
-      <button type="button" id="sortBtn">Sort A→Z</button>
-    </div>
+ <div class="bottom-actions">
+  <button type="button" id="addRowBtn">+ Row</button>
+  <button type="button" id="sortBtn">Sort A→Z</button>
+  <button type="button" id="toggleChecksBtn" class="tiny-pill" title="Toggle checkboxes for this page">☑︎</button>
+</div>
 
     <input id="fileJson" type="file" accept="application/json">
     <input id="fileTxt" type="file" accept="text/plain,.txt">
@@ -518,6 +560,8 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const grid=document.getElementById("grid");
   const addRowBtn=document.getElementById("addRowBtn");
   const sortBtn=document.getElementById("sortBtn");
+  
+  const toggleChecksBtn=document.getElementById("toggleChecksBtn");
 
   const exportJsonBtn=document.getElementById("exportJsonBtn");
   const importJsonBtn=document.getElementById("importJsonBtn");
@@ -607,7 +651,7 @@ function toggleLeftDrawer(){
   // Apply saved UI state on load
   applyPageSize();
   applyRightPanel();
-``
+
 
 /* =========================================================
      Shortcuts: Ctrl+Alt+4 (A4/A5), Ctrl+Alt+P (panel)
@@ -759,7 +803,7 @@ function toggleLeftDrawer(){
     return {
       version:1,
       activePageId:pid,
-      pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:seedItems(),sortUndo:null} }
+      pages:{ [pid]: {id:pid,name:"Personal",category:UNCATEGORIZED,items:seedItems(),sortUndo:null,hideChecks:false} }
     };
   }
   function normalizeItems(raw){
@@ -784,6 +828,7 @@ function toggleLeftDrawer(){
       p.category=normalizeCategory(p.category);
       p.items=normalizeItems(p.items);
       if(!("sortUndo" in p)) p.sortUndo=null;
+	  if(!("hideChecks" in p)) p.hideChecks=false;
       if(p.items.filter(x=>!x.archived).length===0){
         p.items.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
       }
@@ -842,6 +887,32 @@ function toggleLeftDrawer(){
     updateSortLabel();
   }
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
+  // Per-page checkbox visibility (notepad mode)
+function applyChecksUI(){
+  const p=currentPage();
+  const hide=!!p.hideChecks;
+
+  body.classList.toggle("no-checks", hide);
+
+  if(toggleChecksBtn){
+    toggleChecksBtn.classList.toggle("active", hide);
+    toggleChecksBtn.textContent = hide ? "✎" : "☑︎";
+    toggleChecksBtn.title = hide
+      ? "Show checkboxes (this page)"
+      : "Hide checkboxes (this page)";
+  }
+}
+
+if(toggleChecksBtn){
+  toggleChecksBtn.addEventListener("click", ()=>{
+    const p=currentPage();
+    p.hideChecks = !p.hideChecks;
+    saveNotebook();
+    applyChecksUI();
+    render(focusedId);
+  });
+}
+
 
   // page operations
   function switchPage(pageId){
@@ -852,7 +923,11 @@ function toggleLeftDrawer(){
   function newPage(){
     const name=prompt("Page name:","New Page"); if(!name) return;
     const id=uid();
-    notebook.pages[id]={id,name:String(name).trim(),category:UNCATEGORIZED,items:[{id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null}],sortUndo:null};
+    notebook.pages[id]={id,name:String(name).trim(),category:UNCATEGORIZED,
+  items:[{id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null}],
+  sortUndo:null,
+  hideChecks:false
+};
     notebook.activePageId=id; focusedId=notebook.pages[id].items[0].id;
     saveNotebook(); setView("active"); render(focusedId); toast("Page created");
   }
@@ -887,7 +962,11 @@ function toggleLeftDrawer(){
     let pid=findTodayPageId();
     if(pid && notebook.pages[pid]) return pid;
     pid=uid();
-    notebook.pages[pid]={id:pid,name:"Today",category:UNCATEGORIZED,items:[{id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null}],sortUndo:null};
+    notebook.pages[pid]={id:pid,name:"Today",category:UNCATEGORIZED,
+  items:[{id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null}],
+  sortUndo:null,
+  hideChecks:false
+};
     return pid;
   }
   function goToTodayPage(){ const todayId=ensureTodayPage(); switchPage(todayId); setView("active"); toast("Today"); }
@@ -911,6 +990,7 @@ function toggleLeftDrawer(){
 
   function render(tryFocusId){
     const p=currentPage();
+	applyChecksUI();
     grid.innerHTML="";
 
     if(view==="active" && p.items.filter(x=>!x.archived).length===0){
@@ -1901,6 +1981,7 @@ function toggleLeftDrawer(){
   // init
   rebuildRail();
   focusedId=currentPage().items.find(x=>!x.archived)?.id || currentPage().items[0]?.id || null;
+  applyChecksUI();
   setView("active");
   updateSortLabel();
   toast("");
