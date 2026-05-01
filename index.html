@@ -112,13 +112,44 @@ header{
 /* Layout */
 .wrap{
   width:100%;
-  max-width:calc(var(--page-w) + var(--sidebar-w) + var(--rail-w) + (var(--gap)*2));
+  max-width:calc(var(--page-w) + var(--rail-w) + (var(--gap)*2));
   margin:0 auto;
   padding:10px 8px 18px;
   display:flex;gap:var(--gap);
   align-items:flex-start;
   justify-content:center;
 }
+
+
+/* NEW: Right column stacks Pages + Menu */
+.right-col{
+  width:var(--rail-w);
+  flex:0 0 var(--rail-w);
+  position:sticky;
+  top:56px;
+  align-self:flex-start;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* When sidebar is inside right column, it should fill the column */
+.right-col .sidebar{
+  width:100%;
+  flex:0 0 auto;
+  position:static;
+  top:auto;
+}
+
+/* Pages rail is no longer the outer sticky rail; it becomes normal inside right-col */
+.right-col .pages-rail{
+  width:100%;
+  flex:0 0 auto;
+  position:static;
+  top:auto;
+}
+
+
 .sidebar{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);position:sticky;top:56px;align-self:flex-start}
 .main{width:100%;max-width:var(--page-w)}
 
@@ -256,11 +287,13 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
     padding:10px 10px 18px;
   }
 
-  /* Drawer panels */
-  .sidebar, .pages-rail{
+/* Drawer panel is now the right column (Pages + Menu) */
+  .right-col{
     position:fixed;
     top:56px;
     bottom:10px;
+    right:10px;
+    width:min(86vw, 320px);
     max-height:unset;
     overflow:auto;
     -webkit-overflow-scrolling: touch;
@@ -269,29 +302,30 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
     border-radius:18px;
     box-shadow:var(--drawer-shadow);
     z-index:50;
-  }
 
-  .sidebar{
-    left:10px;
-    width:min(84vw, 320px);
-    transform:translateX(calc(-100% - 14px));
-    transition:transform 160ms ease;
-  }
-  .pages-rail{
-    right:10px;
-    width:min(84vw, 280px);
     transform:translateX(calc(100% + 14px));
     transition:transform 160ms ease;
+
+    padding:10px;
   }
 
-  body.left-open .sidebar{ transform:translateX(0); }
-  body.right-open .pages-rail{ transform:translateX(0); }
+  /* Inner sections are normal flow inside the drawer */
+  .right-col .pages-rail,
+  .right-col .sidebar{
+    position:static;
+    width:100%;
+    background:transparent;
+    border:none;
+    border-radius:0;
+    box-shadow:none;
+    padding:0;
+  }
 
-  body.left-open #backdrop,
-  body.right-open #backdrop{ display:block; }
+  body.right-open .right-col{ transform:translateX(0); }
 
-  /* prevent background scroll while drawer open */
-  body.left-open,
+
+ body.right-open #backdrop{ display:block; }
+
   body.right-open{
     overflow:hidden;
     touch-action:none;
@@ -332,45 +366,6 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 <div id="toast"></div>
 
 <div class="wrap">
-  <aside class="sidebar">
-    <div class="side-block">
-      <details class="group" open>
-        <summary class="group-sum">Backup</summary>
-        <div class="group-body">
-          <button type="button" id="exportJsonBtn">Export JSON</button>
-          <button type="button" id="importJsonBtn">Import JSON</button>
-          <button type="button" id="exportTxtBtn">Export TXT</button>
-          <button type="button" id="importTxtBtn">Import TXT</button>
-          <button type="button" id="backupAllBtn">Backup ALL</button>
-          <button type="button" id="restoreAllBtn">Restore ALL</button>
-          <button type="button" id="backupAllTxtBtn">Backup ALL (TXT)</button>
-          <button type="button" id="restoreAllTxtBtn">Restore ALL (TXT)</button>
-        </div>
-      </details>
-
-      <details class="group">
-        <summary class="group-sum">Archive</summary>
-        <div class="group-body">
-          <button type="button" id="archiveDoneBtn">Archive done</button>
-          <button type="button" id="restoreFocusedBtn">Restore focused</button>
-          <button type="button" id="deleteFocusedBtn">Delete focused</button>
-          <button type="button" id="emptyArchiveBtn">Empty archive</button>
-        </div>
-      </details>
-
-      <details class="group">
-        <summary class="group-sum">Page / View</summary>
-        <div class="group-body">
-          <button type="button" id="viewActiveBtn">Active</button>
-          <button type="button" id="viewArchiveBtn">Archive</button>
-          <button type="button" id="deletePageBtn">Delete Page</button>
-        </div>
-      </details>
-
-      <div style="margin-top:10px;color:var(--muted);font-size:12px" id="status"></div>
-    </div>
-  </aside>
-
   <main class="main">
     <div class="paper">
       <div class="grid" id="grid" aria-label="todo grid"></div>
@@ -389,9 +384,52 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
       style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none"></textarea>
   </main>
 
-  <aside class="pages-rail" aria-label="Pages rail">
-    <div class="rail-title" id="railTitle">Pages</div>
-    <div class="rail-groups" id="pagesRail"></div>
+  <!-- NEW: Right column wrapper -->
+  <aside class="right-col" aria-label="Pages and menu">
+    <div class="pages-rail" aria-label="Pages rail">
+      <div class="rail-title" id="railTitle">Pages</div>
+      <div class="rail-groups" id="pagesRail"></div>
+    </div>
+
+    <!-- MOVED: Sidebar content under Pages -->
+    <div class="sidebar">
+      <div class="side-block">
+        <details class="group" open>
+          <summary class="group-sum">Backup</summary>
+          <div class="group-body">
+            <button type="button" id="exportJsonBtn">Export JSON</button>
+            <button type="button" id="importJsonBtn">Import JSON</button>
+            <button type="button" id="exportTxtBtn">Export TXT</button>
+            <button type="button" id="importTxtBtn">Import TXT</button>
+            <button type="button" id="backupAllBtn">Backup ALL</button>
+            <button type="button" id="restoreAllBtn">Restore ALL</button>
+            <button type="button" id="backupAllTxtBtn">Backup ALL (TXT)</button>
+            <button type="button" id="restoreAllTxtBtn">Restore ALL (TXT)</button>
+          </div>
+        </details>
+
+        <details class="group">
+          <summary class="group-sum">Archive</summary>
+          <div class="group-body">
+            <button type="button" id="archiveDoneBtn">Archive done</button>
+            <button type="button" id="restoreFocusedBtn">Restore focused</button>
+            <button type="button" id="deleteFocusedBtn">Delete focused</button>
+            <button type="button" id="emptyArchiveBtn">Empty archive</button>
+          </div>
+        </details>
+
+        <details class="group">
+          <summary class="group-sum">Page / View</summary>
+          <div class="group-body">
+            <button type="button" id="viewActiveBtn">Active</button>
+            <button type="button" id="viewArchiveBtn">Archive</button>
+            <button type="button" id="deletePageBtn">Delete Page</button>
+          </div>
+        </details>
+
+        <div style="margin-top:10px;color:var(--muted);font-size:12px" id="status"></div>
+      </div>
+    </div>
   </aside>
 </div>
 
@@ -452,13 +490,13 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
      UI ONLY: Mobile drawers open/close (no app logic)
      ========================================================= */
   function closeDrawers(){
-    body.classList.remove("left-open","right-open");
-  }
-  function toggleLeftDrawer(){
-    const open = body.classList.contains("left-open");
-    body.classList.toggle("left-open", !open);
     body.classList.remove("right-open");
   }
+function toggleLeftDrawer(){
+    // Menu is now part of the right drawer
+    toggleRightDrawer();
+  }
+
   function toggleRightDrawer(){
     const open = body.classList.contains("right-open");
     body.classList.toggle("right-open", !open);
