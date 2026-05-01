@@ -201,24 +201,30 @@ details[open] summary.group-sum::after{transform:rotate(-90deg)}
 }
 
 /* =========================================================
-   NO-CHECKS MODE (per page): looks like ruled notepad
+   HIDE CHECKBOX ONLY (per page): keep text editable + keep ‼️
    ========================================================= */
+
+/* Keep the same layout columns */
 body.no-checks .row,
 body.no-checks .expandRow{
-  grid-template-columns: 0 1fr var(--act-col);
+  grid-template-columns: var(--check-col) 1fr var(--act-col);
 }
 
-/* Completely hide check cell */
-body.no-checks .cell.check{
-  display:none;
+/* Hide ONLY the checkbox input, keep important button visible */
+body.no-checks input[type="checkbox"]{
+  opacity:0;
+  pointer-events:none;
+  width:0;
+  height:0;
+  margin:0;
 }
 
-/* Remove left divider (since check column is gone) */
-body.no-checks .cell.act{
-  border-left:1px solid rgba(40,60,90,.06);
+/* Tidy spacing inside check cell (optional but helps) */
+body.no-checks .cell.check > div{
+  gap:0 !important;
 }
 
-/* Grid background without the vertical checkbox divider */
+/* Optional: keep ruled look by removing the vertical checkbox divider line */
 body.no-checks .grid{
   background:
     linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0) 24px),
