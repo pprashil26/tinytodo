@@ -664,38 +664,45 @@ function toggleLeftDrawer(){
      UI ONLY
      ========================================================= */
   document.addEventListener("keydown",(e)=>{
-    // Must be Ctrl+Alt (not Meta), avoid overriding other shortcuts
-    if(!(e.ctrlKey && e.altKey) || e.metaKey) return;
+  if(!(e.ctrlKey && e.altKey) || e.metaKey) return;
 
-    // Don't fire while typing in task fields (prevents accidental toggles)
-    const el=document.activeElement;
-    const inTask = el && el.classList && el.classList.contains("task");
-    if(inTask) return;
+  const el=document.activeElement;
+  const inTask = el && el.classList && el.classList.contains("task");
+  if(inTask) return;
 
-    const k = (e.key || "").toLowerCase();
+  const k = (e.key || "").toLowerCase();
 
-    // Ctrl+Alt+4 => toggle A4/A5
-    if(k === "4"){
-      e.preventDefault();
-      if(typeof pageSize !== "undefined"){
-        pageSize = (pageSize==="a4") ? "a5" : "a4";
-        localStorage.setItem(SIZE_KEY, pageSize);
-        applyPageSize();
-      }
-      return;
-    }
+  if(k === "4"){
+    e.preventDefault();
+    pageSize = (pageSize==="a4") ? "a5" : "a4";
+    localStorage.setItem(SIZE_KEY, pageSize);
+    applyPageSize();
+    return;
+  }
 
-    // Ctrl+Alt+P => toggle right panel collapse/show
-    if(k === "p"){
-      e.preventDefault();
-      if(typeof rightCollapsed !== "undefined"){
-        rightCollapsed = !rightCollapsed;
-        localStorage.setItem(RIGHT_COLLAPSE_KEY, rightCollapsed ? "1" : "0");
-        applyRightPanel();
-      }
-      return;
-    }
-  });
+  if(k === "p"){
+    e.preventDefault();
+    rightCollapsed = !rightCollapsed;
+    localStorage.setItem(RIGHT_COLLAPSE_KEY, rightCollapsed ? "1" : "0");
+    applyRightPanel();
+    return;
+  }
+});  // ✅ REQUIRED
+
+// ✅ Separate listener
+document.addEventListener("keydown",(e)=>{
+  if(!(e.ctrlKey && e.altKey) || e.metaKey) return;
+
+  const key = e.key;
+  if(key !== "Backspace" && key !== "Delete") return;
+
+  const el=document.activeElement;
+  if(!(el && el.classList && el.classList.contains("task"))) return;
+
+  e.preventDefault();
+  deleteFocusedLine();
+});
+
 
   /* =========================================================
      Existing app logic (unchanged)
@@ -987,6 +994,39 @@ if(toggleChecksBtn){
     return filterImportantOnly ? items.filter(it=>!!it.important) : items;
   }
   function getItemById(id){ return currentPage().items.find(x=>x.id===id)||null; }
+  
+  // Delete currently focused row (works in both Active + Archive)
+  function deleteFocusedLine(){
+    if(!focusedId){ toast("No focus"); return; }
+    const p=currentPage();
+    const it=p.items.find(x=>x.id===focusedId) || null;
+    if(!it){ toast("Not found"); return; }
+
+    const hasText = String(it.text||"").trim().length>0;
+    if(hasText){
+      const ok = confirm("Delete this line?\n(This cannot be undone)");
+      if(!ok) return;
+    }
+
+    // Remove it
+    const removedId = it.id;
+    p.items = p.items.filter(x=>x.id!==removedId);
+    p.sortUndo = null;
+
+    // Ensure Active view always has at least one line
+    if(p.items.filter(x=>!x.archived).length===0){
+      p.items.unshift({id:uid(),text:"",done:false,important:false,indent:0,archived:false,archivedAt:null});
+    }
+
+    saveNotebook();
+
+    // Choose next focus within current view list
+    const list = visibleItems(); // respects current view + important filter
+    focusedId = list[0]?.id || p.items[0]?.id || null;
+
+    render(focusedId);
+    toast("Deleted");
+  }
 
   // Render
   function focusIndex(i){
