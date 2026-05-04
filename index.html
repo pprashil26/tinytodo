@@ -313,6 +313,48 @@ details.rail-cat[open]>summary::after{transform:rotate(-90deg)}
 .result-meta{color:rgba(0,0,0,.25);font-size:10px;margin-right:6px}
 .rail-empty{color:rgba(0,0,0,.35);font-size:11px;margin-top:6px}
 
+/* Help icon (minimal) */
+#helpBtn{ font-size:14px; color:var(--muted); padding:0; line-height:1.1; }
+#helpBtn:hover{ color:rgba(0,0,0,.85); }
+
+/* Help modal */
+#helpBackdrop{
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.18);
+  z-index:80;
+}
+#helpModal{
+  display:none; position:fixed; inset:0;
+  z-index:90; padding:14px; overflow:auto;
+}
+#helpModal.open, #helpBackdrop.open{ display:block; }
+
+.help-card{
+  max-width:min(720px, 92vw);
+  margin:60px auto;
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:16px;
+  box-shadow:0 18px 40px rgba(0,0,0,.16);
+  padding:10px 12px;
+}
+.help-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.help-title{ font-weight:700; color:rgba(0,0,0,.55); }
+.help-x{ font-size:12px; color:rgba(0,0,0,.35); }
+.help-x:hover{ color:rgba(0,0,0,.85); }
+
+.help-details > summary{ cursor:pointer; user-select:none; color:rgba(0,0,0,.50); font-weight:600; margin-bottom:8px; }
+
+.help-pre{
+  margin:0;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  font-size:12px;
+  color:rgba(0,0,0,.70);
+  line-height:1.35;
+}
+
 /* Toast */
 #toast{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(255,255,255,.92);border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:6px 10px;font-size:12px;color:#222;box-shadow:0 10px 24px rgba(0,0,0,.10);display:none;z-index:60;max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -456,12 +498,28 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
     <button type="button" id="importantFilterBtn" class="filter-important" title="Show only important (‼️) tasks">‼️ Only</button>
 <button type="button" id="pageSizeBtn" title="Toggle page size A5/A4">A4</button>
 <button type="button" id="toggleRightPanelBtn" title="Hide/show right panel">Hide Panel</button>
+<button type="button" id="helpBtn" title="Help">❔</button>
     <button type="button" class="mob-btn" id="mobRightBtn" aria-label="Open pages" title="Pages">📄</button>
   </div>
 </header>
 
 <div id="backdrop" aria-hidden="true"></div>
 <div id="toast"></div>
+<div id="helpBackdrop" aria-hidden="true"></div>
+
+<div id="helpModal" role="dialog" aria-modal="true" aria-label="Help">
+  <div class="help-card">
+    <div class="help-head">
+      <div class="help-title">Help</div>
+      <button type="button" id="helpClose" class="help-x" title="Close">✕</button>
+    </div>
+
+    <details open class="help-details">
+      <summary>README</summary>
+      <pre id="helpContent" class="help-pre">Loading…</pre>
+    </details>
+  </div>
+</div>
 
 <div class="wrap">
   <main class="main">
@@ -592,6 +650,12 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   const fileAll=document.getElementById("fileAll");
   const fileAllTxt=document.getElementById("fileAllTxt");
   const clipFallback=document.getElementById("clipFallback");
+  
+  const helpBtn=document.getElementById("helpBtn");
+const helpModal=document.getElementById("helpModal");
+const helpBackdrop=document.getElementById("helpBackdrop");
+const helpClose=document.getElementById("helpClose");
+const helpContent=document.getElementById("helpContent");
 
   /* =========================================================
      UI ONLY: Mobile drawers open/close (no app logic)
@@ -658,6 +722,51 @@ function toggleLeftDrawer(){
   applyPageSize();
   applyRightPanel();
 
+/* Help (README) modal - UI only */
+let helpLoaded=false;
+
+async function loadHelp(){
+  if(helpLoaded) return;
+  helpLoaded=true;
+
+  const fallback =
+`# Tiny Todo
+
+Shortcuts:
+- Ctrl+Alt+R  Add row
+- Ctrl+Alt+T  Today
+- Ctrl+Alt+4  A4/A5
+- Ctrl+Alt+P  Panel
+- Ctrl+Alt+Backspace/Delete  Delete focused line
+`;
+
+  try{
+    const r=await fetch("README.md",{cache:"no-store"});
+    if(!r.ok) throw new Error("no readme");
+    const txt=await r.text();
+    helpContent.textContent = txt.trim() ? txt : fallback;
+  }catch(_){
+    helpContent.textContent = fallback;
+  }
+}
+
+function openHelp(){
+  loadHelp();
+  helpModal.classList.add("open");
+  helpBackdrop.classList.add("open");
+}
+function closeHelp(){
+  helpModal.classList.remove("open");
+  helpBackdrop.classList.remove("open");
+}
+
+if(helpBtn) helpBtn.addEventListener("click",(e)=>{ e.preventDefault(); openHelp(); });
+if(helpClose) helpClose.addEventListener("click",(e)=>{ e.preventDefault(); closeHelp(); });
+if(helpBackdrop) helpBackdrop.addEventListener("click",closeHelp);
+
+document.addEventListener("keydown",(e)=>{
+  if(e.key==="Escape") closeHelp();
+});
 
 /* =========================================================
      Shortcuts: Ctrl+Alt+4 (A4/A5), Ctrl+Alt+P (panel)
@@ -703,6 +812,14 @@ document.addEventListener("keydown",(e)=>{
   deleteFocusedLine();
 });
 
+// Shortcut: Ctrl+Alt+R => Add Row (works across pages)
+document.addEventListener("keydown",(e)=>{
+  if(!(e.ctrlKey && e.altKey) || e.metaKey) return;
+  const k=(e.key||"").toLowerCase();
+  if(k!=="r") return;
+  e.preventDefault();
+  addRow(); // uses current page; switches to Active if needed
+});
 
   /* =========================================================
      Existing app logic (unchanged)
