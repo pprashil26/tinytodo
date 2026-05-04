@@ -499,6 +499,9 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
 <button type="button" id="pageSizeBtn" title="Toggle page size A5/A4">A4</button>
 <button type="button" id="toggleRightPanelBtn" title="Hide/show right panel">Hide Panel</button>
 <button type="button" id="helpBtn" title="Help">❔</button>
+<button id="syncSignInBtn">Sign in</button>
+<button id="syncSignOutBtn" style="display:none">Sign out</button>
+<span id="syncStatus" style="font-size:12px;color:var(--muted)"></span>
     <button type="button" class="mob-btn" id="mobRightBtn" aria-label="Open pages" title="Pages">📄</button>
   </div>
 </header>
@@ -590,7 +593,87 @@ body.compact .wrap{justify-content:center;padding-right:calc(var(--rail-w) + 14p
   </aside>
 </div>
 
-<script>
+
+<script type="module">
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged,
+    GoogleAuthProvider, signInWithPopup, signOut
+  } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+  // 🔁 PASTE YOUR firebaseConfig FROM STEP 2
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const btnIn = document.getElementById("syncSignInBtn");
+  const btnOut = document.getElementById("syncSignOutBtn");
+  const status = document.getElementById("syncStatus");
+
+  const REV_KEY = "tiny_todo_remote_rev";
+  const docRef = uid => doc(db, "notebooks", uid);
+
+  let user = null, timer;
+
+  function setStatus(t){ if(status) status.textContent = t ? ` ${t}` : ""; }
+
+  window.firebaseSync = {
+    isSignedIn: () => !!user,
+    schedulePush(data){
+      if(!user) return;
+      clearTimeout(timer);
+      timer = setTimeout(async()=>{
+        const rev = Number(localStorage.getItem(REV_KEY)||0)+1;
+        await setDoc(docRef(user.uid), {
+          data, rev, updatedAt:serverTimestamp()
+        },{merge:true});
+        localStorage.setItem(REV_KEY,rev);
+        setStatus("Synced");
+      },900);
+    }
+  };
+
+  btnIn?.addEventListener("click",()=>signInWithPopup(auth,new GoogleAuthProvider()));
+  btnOut?.addEventListener("click",()=>signOut(auth));
+
+  onAuthStateChanged(auth, async u=>{
+    user=u||null;
+    if(!u){
+      btnIn.style.display="";
+      btnOut.style.display="none";
+      setStatus("Signed out");
+      return;
+    }
+
+    btnIn.style.display="none";
+    btnOut.style.display="";
+    setStatus("Loading…");
+
+    const snap = await getDoc(docRef(u.uid));
+    if(snap.exists()){
+      const r=snap.data();
+      if(r.rev>(+localStorage.getItem(REV_KEY)||0)){
+        localStorage.setItem("tiny_todo_v3_pages",JSON.stringify(r.data));
+        localStorage.setItem(REV_KEY,r.rev);
+        location.reload();
+      }
+    }
+    setStatus("Signed in");
+  });
+</script>
+
+<script defer>
 (() => {
   const KEY_V3="tiny_todo_v3_pages", KEY_V2="tiny_todo_v2", KEY_V1="tiny_todo_v1", UI_KEY="tiny_todo_ui_compact";
   const RAIL_KEY_PREFIX="tiny_todo_rail_closed::", UNCATEGORIZED="Uncategorized", ARCHIVE_MARKER="--- ARCHIVE ---";
@@ -1011,11 +1094,13 @@ document.addEventListener("keydown",(e)=>{
     }catch(e){ return null; }
   }
 
-  function saveNotebook(){
-    localStorage.setItem(KEY_V3,JSON.stringify(notebook));
-    rebuildRail();
-    updateSortLabel();
-  }
+ function saveNotebook(){
+  localStorage.setItem(KEY_V3, JSON.stringify(notebook));
+  rebuildRail();
+  updateSortLabel();
+  if(window.firebaseSync?.isSignedIn())
+    window.firebaseSync.schedulePush(notebook);
+}
   function currentPage(){ return notebook.pages[notebook.activePageId]; }
   // Per-page checkbox visibility (notepad mode)
 function applyChecksUI(){
